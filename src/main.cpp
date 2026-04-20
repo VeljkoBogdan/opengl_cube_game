@@ -14,6 +14,8 @@
 #include "shader.h"
 #include "core/camera.h"
 #include "core/chunk.h"
+#include "core/world.h"
+#include "core/worldGenerator.h"
 #include "rendering/chunkRenderer.h"
 #include "util/IVec3Hash.h"
 
@@ -21,10 +23,11 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double xPos, double yPos);
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
+void find_spawn(World& world, Camera& camera);
 
 // settings
-const unsigned int SCR_WIDTH = 800;
-const unsigned int SCR_HEIGHT = 600;
+const unsigned int SCR_WIDTH = 1240;
+const unsigned int SCR_HEIGHT = 800;
 
 float deltaTime = 0.0f;
 float lastTime = 0.0f;
@@ -44,25 +47,9 @@ Camera camera;
 float speed = 5.0f;
 
 // world
-std::unordered_map<glm::ivec3, Chunk, IVec3Hash> chunks;
-ChunkRenderer chunkRenderer(chunks);
-
-void generateChunk(Chunk& chunk, glm::ivec3 coords) {
-    chunk.dirty = true;
-
-    for (int x = 0; x < 16; x++) {
-        for (int z = 0; z < 16; z++) {
-            for (int y = 0; y < 16; y++) {
-                // if (y < 60)       chunk.blocks[x][y][z] = 3; // stone
-                // else if (y < 63)  chunk.blocks[x][y][z] = 2; // dirt
-                // else if (y == 63) chunk.blocks[x][y][z] = 1; // grass
-                // else              chunk.blocks[x][y][z] = 0; // air
-
-                chunk.blocks[x][y][z] = 1;
-            }
-        }
-    }
-}
+World world;
+ChunkRenderer chunkRenderer(world);
+WorldGenerator worldGen(12345);
 
 int main() {
     glfwInit();
@@ -77,7 +64,7 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // 1 = vsync, 0 = uncapped
+    glfwSwapInterval(0); // 1 = vsync, 0 = uncapped
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -99,18 +86,20 @@ int main() {
 
     // preparation
     // generating a 4x4 grid of chunks
-    for (int x = 0; x < 1; x++) {
-        for (int z = 0; z < 1; z++) {
-            for (int y = 0; y < 1; y++) {
+    for (int x = 0; x < 4; x++) {
+        for (int z = 0; z < 4; z++) {
+            for (int y = 0; y < 4; y++) {
                 glm::ivec3 coord(x, y, z);
                 Chunk chunk;
-                generateChunk(chunk, coord);
+                worldGen.generateChunk(chunk, coord);
                 glGenVertexArrays(1, &chunk.VAO);
                 glGenBuffers(1, &chunk.VBO);
-                chunks[coord] = chunk;
+                world.setChunk(coord, chunk);
             }
         }
     }
+
+    find_spawn(world, camera);
 
     // Loop
     while (!glfwWindowShouldClose(window)) {
@@ -151,7 +140,7 @@ int main() {
         shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
         shader.setVec3("u_lightPos", glm::vec3(128.0f));
 
-        for (auto& [coords, chunk] : chunks) {
+        for (auto& [coords, chunk] : world.getChunks()) {
             if (chunk.dirty) {
                 chunkRenderer.buildMesh(chunk, coords);
                 chunk.dirty = false;
@@ -222,4 +211,18 @@ void mouse_callback(GLFWwindow* window, double xPos, double yPos) {
 
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset) {
     
+}
+
+void find_spawn(World& world, Camera& camera) {
+    int above = 512, below = -256;
+
+    // find upper limit
+    for (int y = above; y > below; y--) {
+        if (world.getBlock(glm::ivec3(0, y, 0)) != 0) {
+            above = y + 2;
+            break;
+        }
+    }
+
+    camera.position = glm::vec3(0.0f, (float)above, 0.0f);
 }

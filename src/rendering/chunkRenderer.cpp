@@ -3,17 +3,38 @@
 void ChunkRenderer::buildMesh(Chunk &chunk, glm::ivec3 chunkPos) {
     std::vector<float> vertices;
 
+    auto getBlock = [&](int x, int y, int z) -> int {
+        if (x >= 0 && x < 16 &&
+            y >= 0 && y < 16 &&
+            z >= 0 && z < 16)
+            return chunk.blocks[x][y][z];
+
+        glm::ivec3 neighborPos = chunkPos;
+        int nx = x, ny = y, nz = z;
+
+        if (x < 0)  { neighborPos.x--; nx = 15; }
+        if (x >= 16){ neighborPos.x++; nx = 0;  }
+        if (y < 0)  { neighborPos.y--; ny = 15; }
+        if (y >= 16){ neighborPos.y++; ny = 0;  }
+        if (z < 0)  { neighborPos.z--; nz = 15; }
+        if (z >= 16){ neighborPos.z++; nz = 0;  }
+
+        auto it = world.getChunks().find(neighborPos);
+        if (it == world.getChunks().end()) return 0; // no neighbor, treat as air
+        return it->second.blocks[nx][ny][nz];
+    };
+    
     for (int x = 0; x < CHUNK_WIDTH; x++)
     for (int y = 0; y < CHUNK_HEIGHT; y++)
     for (int z = 0; z < CHUNK_LENGTH; z++) {
         if (chunk.blocks[x][y][z] == 0) continue;
 
-        if (y == 0 || chunk.blocks[x][y-1][z] == 0) addFace(Direction::DOWN, x, y, z, vertices);
-        if (y == CHUNK_HEIGHT-1 || chunk.blocks[x][y+1][z] == 0) addFace(Direction::UP, x, y, z, vertices);
-        if (x == 0 || chunk.blocks[x-1][y][z] == 0) addFace(Direction::LEFT, x, y, z, vertices);
-        if (x == CHUNK_WIDTH-1 || chunk.blocks[x+1][y][z] == 0) addFace(Direction::RIGHT, x, y, z, vertices);
-        if (z == 0 || chunk.blocks[x][y][z+1] == 0) addFace(Direction::FRONT, x, y, z, vertices);
-        if (z == CHUNK_LENGTH-1 || chunk.blocks[x][y][z-1] == 0) addFace(Direction::BACK, x, y, z, vertices);
+        if (getBlock(x, y-1, z) == 0) addFace(Direction::DOWN,  x, y, z, vertices);
+        if (getBlock(x, y+1, z) == 0) addFace(Direction::UP,    x, y, z, vertices);
+        if (getBlock(x-1, y, z) == 0) addFace(Direction::LEFT,  x, y, z, vertices);
+        if (getBlock(x+1, y, z) == 0) addFace(Direction::RIGHT, x, y, z, vertices);
+        if (getBlock(x, y, z-1) == 0) addFace(Direction::FRONT, x, y, z, vertices);
+        if (getBlock(x, y, z+1) == 0) addFace(Direction::BACK,  x, y, z, vertices);
     }
 
     glBindVertexArray(chunk.VAO);
@@ -29,6 +50,7 @@ void ChunkRenderer::buildMesh(Chunk &chunk, glm::ivec3 chunkPos) {
 }
 
 void ChunkRenderer::draw(Chunk &chunk, Shader &shader, glm::ivec3 coords) {
+    if (chunk.vertexCount == 0) return;
     glBindVertexArray(chunk.VAO);
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(coords * 16));

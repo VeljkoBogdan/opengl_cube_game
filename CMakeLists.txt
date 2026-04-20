@@ -9,6 +9,8 @@ set(SOURCES
     src/glad.c
     src/shader.cpp
     src/core/camera.cpp
+    src/core/worldGenerator.cpp
+    src/core/world.cpp
     src/rendering/chunkRenderer.cpp
     src/util/OpenSimplexNoise.cpp
 )
