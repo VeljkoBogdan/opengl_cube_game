@@ -145,8 +145,10 @@ int main() {
                 chunkRenderer.buildMesh(chunk, coords);
                 chunk.dirty = false;
             }
-            chunkRenderer.draw(chunk, shader, coords);
+            // chunkRenderer.draw(chunk, shader, coords);
         }
+
+        chunkRenderer.drawAll(shader);
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

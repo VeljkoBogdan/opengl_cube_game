@@ -58,6 +58,16 @@ void ChunkRenderer::draw(Chunk &chunk, Shader &shader, glm::ivec3 coords) {
     glDrawArrays(GL_TRIANGLES, 0, chunk.vertexCount);
 }
 
+void ChunkRenderer::drawAll(Shader &shader) {
+    for (auto& [coords, chunk] : world.getChunks()) {
+        glBindVertexArray(chunk.VAO);
+        glm::mat4 model = glm::mat4(1.0f);
+        model = glm::translate(model, glm::vec3(coords * 16));
+        shader.setMat4("u_model", model);
+        glDrawArrays(GL_TRIANGLES, 0, chunk.vertexCount);
+    }
+}
+
 void ChunkRenderer::addFace(int face, int x, int y, int z, std::vector<float>& verticesStorage) {
     switch (face) {
     case Direction::DOWN:
@@ -102,22 +112,22 @@ void ChunkRenderer::addFace(int face, int x, int y, int z, std::vector<float>& v
         break;
     case Direction::BACK:
         verticesStorage.insert(verticesStorage.end(), {
-            x-0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, -1.0f,
-            x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, -1.0f,
-            x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, -1.0f,
-            x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, -1.0f,
-            x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, -1.0f,
-            x+0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, -1.0f
+            x-0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
+            x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
+            x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
+            x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
+            x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
+            x+0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f
         });
         break;
     case Direction::FRONT:
         verticesStorage.insert(verticesStorage.end(), {
-            x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, 1.0f,
-            x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, 1.0f,
-            x+0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, 1.0f,
-            x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, 1.0f,
-            x-0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, 1.0f,
-            x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, 1.0f
+            x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
+            x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
+            x+0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
+            x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
+            x-0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
+            x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f
         });
         break;
     default:
