@@ -8,6 +8,9 @@ set(SOURCES
     src/main.cpp
     src/glad.c
     src/shader.cpp
+    src/core/camera.cpp
+    src/rendering/chunkRenderer.cpp
+    src/util/OpenSimplexNoise.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

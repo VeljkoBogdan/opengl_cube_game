@@ -1,16 +1,21 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#define STB_IMAGE_IMPLEMENTATION
+#include "util/stb_image.h"
 
 #include <iostream>
 #include <cmath>
+#include <unordered_map>
 
-#include "shader.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
-#include "util/stb_image.h"
+#include "shader.h"
+#include "core/camera.h"
+#include "core/chunk.h"
+#include "rendering/chunkRenderer.h"
+#include "util/IVec3Hash.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -23,6 +28,41 @@ const unsigned int SCR_HEIGHT = 600;
 
 float deltaTime = 0.0f;
 float lastTime = 0.0f;
+double lastFPSTime = glfwGetTime();
+int nbFrames = 0;
+
+// mouse
+bool firstMouse = true; // used for smoothing the first mouse movement
+float lastMouseX = 400.0f;
+float lastMouseY = 300.0f;
+float mouseSensitivity = 0.1f;
+float yaw = -90.0f;
+float pitch = 0.0f;
+
+// camera
+Camera camera;
+float speed = 5.0f;
+
+// world
+std::unordered_map<glm::ivec3, Chunk, IVec3Hash> chunks;
+ChunkRenderer chunkRenderer(chunks);
+
+void generateChunk(Chunk& chunk, glm::ivec3 coords) {
+    chunk.dirty = true;
+
+    for (int x = 0; x < 16; x++) {
+        for (int z = 0; z < 16; z++) {
+            for (int y = 0; y < 16; y++) {
+                // if (y < 60)       chunk.blocks[x][y][z] = 3; // stone
+                // else if (y < 63)  chunk.blocks[x][y][z] = 2; // dirt
+                // else if (y == 63) chunk.blocks[x][y][z] = 1; // grass
+                // else              chunk.blocks[x][y][z] = 0; // air
+
+                chunk.blocks[x][y][z] = 1;
+            }
+        }
+    }
+}
 
 int main() {
     glfwInit();
@@ -37,6 +77,7 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
+    glfwSwapInterval(1); // 1 = vsync, 0 = uncapped
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -46,13 +87,46 @@ int main() {
         return -1;
     }    
 
+    Shader shader(
+        "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/vertex.vert",
+        "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
+    );
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_BACK);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    // preparation
+    // generating a 4x4 grid of chunks
+    for (int x = 0; x < 1; x++) {
+        for (int z = 0; z < 1; z++) {
+            for (int y = 0; y < 1; y++) {
+                glm::ivec3 coord(x, y, z);
+                Chunk chunk;
+                generateChunk(chunk, coord);
+                glGenVertexArrays(1, &chunk.VAO);
+                glGenBuffers(1, &chunk.VBO);
+                chunks[coord] = chunk;
+            }
+        }
+    }
 
     // Loop
     while (!glfwWindowShouldClose(window)) {
+        // getting delta time
         float currentTime = glfwGetTime();
         deltaTime = currentTime - lastTime;
         lastTime = currentTime;
+
+        // fps
+        double currentFPSTime = glfwGetTime();
+        nbFrames++;
+        if (currentFPSTime - lastFPSTime >= 1.0) {
+            printf("%f ms/frame\n", 1000.0/double(nbFrames));
+            nbFrames = 0;
+            lastFPSTime = currentFPSTime;
+        }
 
         // input
         // -----
@@ -62,6 +136,28 @@ int main() {
         // ------
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // model view and projection
+        glm::mat4 model, view, proj;
+        model = view = proj = glm::mat4(1.0f);
+        view = camera.getViewMatrix();
+        proj = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
+
+        // setting uniforms
+        shader.use();
+        shader.setMat4("u_view", view);
+        shader.setMat4("u_proj", proj);
+        shader.setVec3("u_ambient", glm::vec3(0.04f, 0.04f, 0.05f));
+        shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
+        shader.setVec3("u_lightPos", glm::vec3(128.0f));
+
+        for (auto& [coords, chunk] : chunks) {
+            if (chunk.dirty) {
+                chunkRenderer.buildMesh(chunk, coords);
+                chunk.dirty = false;
+            }
+            chunkRenderer.draw(chunk, shader, coords);
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
@@ -79,6 +175,14 @@ int main() {
 // ---------------------------------------------------------------------------------------------------------
 void processInput(GLFWwindow *window) {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.position += speed * deltaTime * glm::normalize(glm::vec3(camera.target.x, 0.0f, camera.target.z));
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.position -= speed * deltaTime * glm::normalize(glm::vec3(camera.target.x, 0.0f, camera.target.z));
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.position -= speed * deltaTime * camera.right;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.position += speed * deltaTime * camera.right;
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) camera.position += speed * deltaTime * glm::vec3(0.0f, 1.0f, 0.0f);
+    if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) camera.position -= speed * deltaTime * glm::vec3(0.0f, 1.0f, 0.0f);
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -91,7 +195,29 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 }
 
 void mouse_callback(GLFWwindow* window, double xPos, double yPos) {
+    if (firstMouse) {
+        lastMouseX = xPos;
+        lastMouseY = yPos;
+        firstMouse = false;
+    }
 
+    float x = (xPos - lastMouseX) * mouseSensitivity;
+    float y = (lastMouseY - yPos) * mouseSensitivity;
+    lastMouseX = xPos;
+    lastMouseY = yPos;
+
+    yaw += x;
+    pitch += y;
+
+    if (pitch > 89.9f) pitch = 89.9f;
+    if (pitch < -89.9f) pitch = -89.9f;
+
+    camera.target.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
+    camera.target.y = sin(glm::radians(pitch));
+    camera.target.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
+    camera.target = glm::normalize(camera.target);
+    camera.right = glm::normalize(glm::cross(camera.target, glm::vec3(0.0f, 1.0f, 0.0f)));
+    camera.up = glm::normalize(glm::cross(camera.right, camera.target));
 }
 
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset) {
