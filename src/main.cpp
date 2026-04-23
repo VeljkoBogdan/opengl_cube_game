@@ -52,6 +52,7 @@ int renderDistance = 16;
 World world;
 ChunkRenderer chunkRenderer(world);
 ChunkLoader chunkLoader;
+bool firstRun = true;
 
 int main() {
     glfwInit();
@@ -111,20 +112,23 @@ int main() {
         }
 
         glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
-        if (currentPlayerChunk != lastPlayerChunk) {
+        if (currentPlayerChunk != lastPlayerChunk || firstRun) {
+            // unloading distant chunks
             auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, renderDistance);
             world.unloadChunks(chunksToUnload);
             chunkLoader.unloadChunks(chunksToUnload);
-            lastPlayerChunk = currentPlayerChunk;
-        }
 
-        // requesting chunks
-        int half = renderDistance / 2;
-        for (int x = -half; x < half; x++)
-        for (int y = -half; y < half; y++)
-        for (int z = -half; z < half; z++) {
-            glm::ivec3 coord = worldToChunkPos(camera.position) + glm::ivec3(x, y, z);
-            if (!world.hasChunk(coord)) chunkLoader.requestChunk(coord);
+            // requesting chunks
+            int half = renderDistance / 2;
+            for (int x = -half; x < half; x++)
+            for (int y = -half; y < half; y++)
+            for (int z = -half; z < half; z++) {
+                glm::ivec3 coord = currentPlayerChunk + glm::ivec3(x, y, z);
+                if (!world.hasChunk(coord)) chunkLoader.requestChunk(coord);
+            }
+
+            lastPlayerChunk = currentPlayerChunk;
+            firstRun = false;
         }
 
         // input

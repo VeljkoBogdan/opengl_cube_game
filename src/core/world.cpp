@@ -1,6 +1,7 @@
 #include "world.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include "../util/utils.h"
 
 Chunk &World::getChunk(glm::ivec3 chunkPos) {
     return chunks.at(chunkPos);
@@ -10,8 +11,8 @@ bool World::hasChunk(glm::ivec3 chunkPos) const {
     return chunks.find(chunkPos) != chunks.end();
 }
 
-void World::setChunk(glm::ivec3 chunkPos, Chunk chunk) {
-    chunks[chunkPos] = chunk;
+void World::setChunk(glm::ivec3 chunkPos, Chunk&& chunk) {
+    chunks[chunkPos] = std::move(chunk);
 }
 
 int World::getBlock(glm::ivec3 worldPos) const {
@@ -56,14 +57,6 @@ void World::unloadChunks(std::vector<glm::ivec3>& toUnload) {
 
 std::unordered_map<glm::ivec3, Chunk, IVec3Hash> &World::getChunks() {
     return chunks;
-}
-
-glm::ivec3 World::worldToChunkPos(glm::ivec3 worldPos) const {
-    return glm::ivec3(
-        glm::floor((float)worldPos.x / CHUNK_WIDTH),
-        glm::floor((float)worldPos.y / CHUNK_HEIGHT),
-        glm::floor((float)worldPos.z / CHUNK_LENGTH)
-    );
 }
 
 glm::ivec3 World::worldToLocalPos(glm::ivec3 worldPos) const {

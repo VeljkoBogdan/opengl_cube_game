@@ -151,26 +151,24 @@ void ChunkLoader::processReady(World &world) {
 void ChunkLoader::unloadChunks(std::vector<glm::ivec3> &toUnload) {
     // clear the pending queue
     std::lock_guard<std::mutex> lock(toLoadMutex);
-
     for (auto& coord : toUnload) pending.erase(coord);
 
-    std::queue<ChunkLoadJob> filtered;
-    while (!toLoad.empty()) {
-        ChunkLoadJob job = toLoad.front();
-        toLoad.pop();
-        if (pending.count(job.coord)) filtered.push(job);
-    }
-    toLoad = std::move(filtered);
-
-    // clear the ready queue
+    // clear the load and ready queue
     std::lock_guard<std::mutex> readyLock(readyMutex);
     std::unordered_set<glm::ivec3, IVec3Hash> unloadSet(toUnload.begin(), toUnload.end());
     std::queue<ChunkReadyJob> filteredReady;
-    while (!ready.empty()) {
-        ChunkReadyJob job = std::move(ready.front());
+    std::queue<ChunkLoadJob> filtered;
+    while (!ready.empty() && !toLoad.empty()) {
+        ChunkLoadJob loadJob = toLoad.front();
+        ChunkReadyJob readyJob = std::move(ready.front());
+        toLoad.pop();
         ready.pop();
-        if (!unloadSet.count(job.coord)) filteredReady.push(job);
+        
+        if (!unloadSet.count(readyJob.coord)) filteredReady.push(readyJob);
+        if (pending.count(loadJob.coord)) filtered.push(loadJob);
     }
+
+    toLoad = std::move(filtered);
     ready = std::move(filteredReady);
 }
 

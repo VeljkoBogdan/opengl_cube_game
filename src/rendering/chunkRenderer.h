@@ -16,14 +16,10 @@ class ChunkRenderer {
 public:
     ChunkRenderer(World& world) : world(world) {}
 
-    void buildMesh(Chunk& chunk, glm::ivec3 chunkPos);
     void draw(Chunk& chunk, Shader& shader, glm::ivec3 coords);
     void drawAll(Shader& shader);
 private:
     World& world;
-
-    void addFace(int face, int x, int y, int z, std::vector<float>& verticesStorage);
-    bool isSolid(int blockId);
 };
 
 #endif
