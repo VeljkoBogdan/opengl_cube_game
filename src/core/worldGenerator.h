@@ -8,6 +8,7 @@
 
 class WorldGenerator {
 public:
+    WorldGenerator();
     WorldGenerator(int seed);
     void generateChunk(Chunk& chunk, glm::ivec3 coords);
 

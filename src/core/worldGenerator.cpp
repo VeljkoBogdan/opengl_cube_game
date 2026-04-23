@@ -4,6 +4,10 @@ WorldGenerator::WorldGenerator(int seed) {
     noise = std::make_unique<OpenSimplexNoise::Noise>(seed);
 }
 
+WorldGenerator::WorldGenerator() {
+    noise = std::make_unique<OpenSimplexNoise::Noise>(12345);
+}
+
 void WorldGenerator::generateChunk(Chunk& chunk, glm::ivec3 coords) {
     chunk.dirty = true;
 

@@ -16,8 +16,10 @@
 #include "core/chunk.h"
 #include "core/world.h"
 #include "core/worldGenerator.h"
+#include "core/chunkLoader.h"
 #include "rendering/chunkRenderer.h"
 #include "util/IVec3Hash.h"
+#include "util/utils.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -31,7 +33,6 @@ const unsigned int SCR_HEIGHT = 800;
 
 float deltaTime = 0.0f;
 float lastTime = 0.0f;
-double lastFPSTime = glfwGetTime();
 int nbFrames = 0;
 
 // mouse
@@ -44,12 +45,13 @@ float pitch = 0.0f;
 
 // camera
 Camera camera;
-float speed = 5.0f;
+float speed = 60.0f;
+int renderDistance = 16;
 
 // world
 World world;
 ChunkRenderer chunkRenderer(world);
-WorldGenerator worldGen(12345);
+ChunkLoader chunkLoader;
 
 int main() {
     glfwInit();
@@ -64,7 +66,7 @@ int main() {
         return -1;
     }
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(0); // 1 = vsync, 0 = uncapped
+    glfwSwapInterval(1); // 1 = vsync, 0 = uncapped
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
@@ -79,27 +81,18 @@ int main() {
         "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
     );
 
+    double lastFPSTime = glfwGetTime();
+
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    // preparation
-    // generating a 4x4 grid of chunks
-    for (int x = 0; x < 4; x++) {
-        for (int z = 0; z < 4; z++) {
-            for (int y = 0; y < 4; y++) {
-                glm::ivec3 coord(x, y, z);
-                Chunk chunk;
-                worldGen.generateChunk(chunk, coord);
-                glGenVertexArrays(1, &chunk.VAO);
-                glGenBuffers(1, &chunk.VBO);
-                world.setChunk(coord, chunk);
-            }
-        }
-    }
-
     find_spawn(world, camera);
+
+    chunkLoader.start();
+
+    glm::ivec3 lastPlayerChunk = worldToChunkPos(camera.position);
 
     // Loop
     while (!glfwWindowShouldClose(window)) {
@@ -117,6 +110,23 @@ int main() {
             lastFPSTime = currentFPSTime;
         }
 
+        glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
+        if (currentPlayerChunk != lastPlayerChunk) {
+            auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, renderDistance);
+            world.unloadChunks(chunksToUnload);
+            chunkLoader.unloadChunks(chunksToUnload);
+            lastPlayerChunk = currentPlayerChunk;
+        }
+
+        // requesting chunks
+        int half = renderDistance / 2;
+        for (int x = -half; x < half; x++)
+        for (int y = -half; y < half; y++)
+        for (int z = -half; z < half; z++) {
+            glm::ivec3 coord = worldToChunkPos(camera.position) + glm::ivec3(x, y, z);
+            if (!world.hasChunk(coord)) chunkLoader.requestChunk(coord);
+        }
+
         // input
         // -----
         processInput(window);
@@ -130,7 +140,7 @@ int main() {
         glm::mat4 model, view, proj;
         model = view = proj = glm::mat4(1.0f);
         view = camera.getViewMatrix();
-        proj = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 100.0f);
+        proj = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 1000.0f);
 
         // setting uniforms
         shader.use();
@@ -140,13 +150,7 @@ int main() {
         shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
         shader.setVec3("u_lightPos", glm::vec3(128.0f));
 
-        for (auto& [coords, chunk] : world.getChunks()) {
-            if (chunk.dirty) {
-                chunkRenderer.buildMesh(chunk, coords);
-                chunk.dirty = false;
-            }
-            // chunkRenderer.draw(chunk, shader, coords);
-        }
+        chunkLoader.processReady(world);
 
         chunkRenderer.drawAll(shader);
 
@@ -155,6 +159,8 @@ int main() {
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+
+    chunkLoader.stop();
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------
@@ -216,15 +222,17 @@ void scroll_callback(GLFWwindow* window, double xOffset, double yOffset) {
 }
 
 void find_spawn(World& world, Camera& camera) {
-    int above = 512, below = -256;
+    // int above = 512, below = -256;
 
-    // find upper limit
-    for (int y = above; y > below; y--) {
-        if (world.getBlock(glm::ivec3(0, y, 0)) != 0) {
-            above = y + 2;
-            break;
-        }
-    }
+    // // find upper limit
+    // for (int y = above; y > below; y--) {
+    //     if (world.getBlock(glm::ivec3(0, y, 0)) != 0) {
+    //         above = y + 2;
+    //         break;
+    //     }
+    // }
 
-    camera.position = glm::vec3(0.0f, (float)above, 0.0f);
+    // camera.position = glm::vec3(0.0f, (float)above, 0.0f);
+
+    camera.position = glm::vec3(0.0f, 80.0f, 0.0f);
 }

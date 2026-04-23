@@ -11,6 +11,7 @@ set(SOURCES
     src/core/camera.cpp
     src/core/worldGenerator.cpp
     src/core/world.cpp
+    src/core/chunkLoader.cpp
     src/rendering/chunkRenderer.cpp
     src/util/OpenSimplexNoise.cpp
 )

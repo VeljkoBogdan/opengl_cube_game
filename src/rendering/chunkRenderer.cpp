@@ -36,21 +36,10 @@ void ChunkRenderer::buildMesh(Chunk &chunk, glm::ivec3 chunkPos) {
         if (getBlock(x, y, z-1) == 0) addFace(Direction::FRONT, x, y, z, vertices);
         if (getBlock(x, y, z+1) == 0) addFace(Direction::BACK,  x, y, z, vertices);
     }
-
-    glBindVertexArray(chunk.VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, chunk.VBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-
-    chunk.vertexCount = vertices.size() / 6; // depends on the vertex layout
 }
 
 void ChunkRenderer::draw(Chunk &chunk, Shader &shader, glm::ivec3 coords) {
-    if (chunk.vertexCount == 0) return;
+    if (chunk.vertexCount == 0) return; // empty chunk
     glBindVertexArray(chunk.VAO);
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, glm::vec3(coords * 16));
@@ -60,6 +49,7 @@ void ChunkRenderer::draw(Chunk &chunk, Shader &shader, glm::ivec3 coords) {
 
 void ChunkRenderer::drawAll(Shader &shader) {
     for (auto& [coords, chunk] : world.getChunks()) {
+        if (chunk.vertexCount <= 0) continue; // empty chunk
         glBindVertexArray(chunk.VAO);
         glm::mat4 model = glm::mat4(1.0f);
         model = glm::translate(model, glm::vec3(coords * 16));

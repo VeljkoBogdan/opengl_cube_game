@@ -15,6 +15,9 @@ public:
     int getBlock(glm::ivec3 worldPos) const;
     void setBlock(glm::ivec3 worldPos, int blockId);
 
+    std::vector<glm::ivec3> getChunksToUnload(glm::ivec3 playerChunkPos, int renderDistance);
+    void unloadChunks(std::vector<glm::ivec3>& toUnload);
+
     std::unordered_map<glm::ivec3, Chunk, IVec3Hash>& getChunks();
 private:
     std::unordered_map<glm::ivec3, Chunk, IVec3Hash> chunks;
