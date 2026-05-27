@@ -20,6 +20,7 @@
 #include "rendering/chunkRenderer.h"
 #include "util/IVec3Hash.h"
 #include "util/utils.h"
+#include "util/timer.h"
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
@@ -115,8 +116,7 @@ int main() {
         if (currentPlayerChunk != lastPlayerChunk || firstRun) {
             // unloading distant chunks
             auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, renderDistance);
-            world.unloadChunks(chunksToUnload);
-            chunkLoader.unloadChunks(chunksToUnload);
+            chunkLoader.requestUnload(chunksToUnload);
 
             // requesting chunks
             int half = renderDistance / 2;
@@ -154,9 +154,20 @@ int main() {
         shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
         shader.setVec3("u_lightPos", glm::vec3(128.0f));
 
-        chunkLoader.processReady(world);
+        {
+            Timer t("processUnload");
+            chunkLoader.processUnload(world);
+        }
 
-        chunkRenderer.drawAll(shader);
+        {
+            Timer t("processReady");
+            chunkLoader.processReady(world);
+        }
+
+        {
+            Timer t("drawAll");
+            chunkRenderer.drawAll(shader);
+        }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------

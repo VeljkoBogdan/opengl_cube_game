@@ -12,6 +12,7 @@
 #include "world.h"
 #include "worldGenerator.h"
 #include "../util/IVec3Hash.h"
+#include "../constants.h"
 
 struct ChunkLoadJob {
     glm::ivec3 coord;
@@ -29,7 +30,9 @@ public:
 
     void requestChunk(glm::ivec3 coord);
     void processReady(World& world);
-    void unloadChunks(std::vector<glm::ivec3>& toUnload);
+
+    void requestUnload(std::vector<glm::ivec3>& coords);
+    void processUnload(World& world);
 
     void start();
     void stop();
@@ -39,6 +42,7 @@ private:
     void buildVertices(Chunk& chunk, std::vector<float>& vertices);
 
     std::unordered_set<glm::ivec3, IVec3Hash> pending;
+    std::unordered_set<glm::ivec3, IVec3Hash> pendingUnload;
 
     std::thread worker;
     std::atomic<bool> running;
@@ -48,6 +52,9 @@ private:
 
     std::queue<ChunkReadyJob> ready;
     std::mutex readyMutex;
+
+    std::queue<glm::ivec3> toUnloadQueue;
+    std::mutex toUnloadMutex;
 
     WorldGenerator generator;
 };

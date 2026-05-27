@@ -46,13 +46,21 @@ std::vector<glm::ivec3> World::getChunksToUnload(glm::ivec3 playerChunkPos, int 
     return toUnload;
 }
 
-void World::unloadChunks(std::vector<glm::ivec3>& toUnload) {
-    for (auto& coord : toUnload) {
-        Chunk& chunk = chunks.at(coord);
-        glDeleteVertexArrays(1, &chunk.VAO);
-        glDeleteBuffers(1, &chunk.VBO);
-        chunks.erase(coord);
-    }
+// ! deprecated
+// void World::unloadChunks(std::vector<glm::ivec3>& toUnload) {
+//     for (auto& coord : toUnload) {
+//         Chunk& chunk = chunks.at(coord);
+//         glDeleteVertexArrays(1, &chunk.VAO);
+//         glDeleteBuffers(1, &chunk.VBO);
+//         chunks.erase(coord);
+//     }
+// }
+
+void World::unloadChunk(glm::ivec3 coord) {
+    Chunk& chunk = chunks.at(coord);
+    glDeleteVertexArrays(1, &chunk.VAO);
+    glDeleteBuffers(1, &chunk.VBO);
+    chunks.erase(coord);
 }
 
 std::unordered_map<glm::ivec3, Chunk, IVec3Hash> &World::getChunks() {

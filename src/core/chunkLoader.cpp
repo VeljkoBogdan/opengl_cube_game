@@ -3,6 +3,9 @@
 #include "chunkLoader.h"
 #include "../util/direction.h"
 
+const int chunksUploadedPerFrame = 8;
+const int chunksUnloadedPerFrame = 8;
+
 void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& verticesStorage) {
     switch (face) {
         case Direction::DOWN:
@@ -115,6 +118,10 @@ ChunkLoader::~ChunkLoader() {
 void ChunkLoader::requestChunk(glm::ivec3 coord)
 {
     std::lock_guard<std::mutex> lock(toLoadMutex);
+    std::lock_guard<std::mutex> lockUnload(toUnloadMutex);
+
+    pendingUnload.erase(coord);
+
     if (pending.count(coord)) return; // return if already queued
     pending.insert(coord);
     toLoad.push({coord});
@@ -122,12 +129,16 @@ void ChunkLoader::requestChunk(glm::ivec3 coord)
 
 void ChunkLoader::processReady(World &world) {
     std::lock_guard<std::mutex> lock(readyMutex);
+    std::lock_guard<std::mutex> lockUnload(toUnloadMutex);
 
     int processed = 0;
-    while (!ready.empty() && processed < 8) {
+    while (!ready.empty() && processed < chunksUploadedPerFrame) {
         ChunkReadyJob job = std::move(ready.front());
         ready.pop();
 
+        if (pendingUnload.count(job.coord)) continue; // skip if pending unload
+
+        // upload
         glGenVertexArrays(1, &job.chunk.VAO);
         glGenBuffers(1, &job.chunk.VBO);
 
@@ -148,28 +159,63 @@ void ChunkLoader::processReady(World &world) {
     }
 }
 
-void ChunkLoader::unloadChunks(std::vector<glm::ivec3> &toUnload) {
-    // clear the pending queue
-    std::lock_guard<std::mutex> lock(toLoadMutex);
-    for (auto& coord : toUnload) pending.erase(coord);
+// ! deprecated - laggy
+// void ChunkLoader::unloadChunks(std::vector<glm::ivec3> &toUnload) {
+//     std::unordered_set<glm::ivec3, IVec3Hash> unloadSet(toUnload.begin(), toUnload.end());
+//     {
+//         std::lock_guard<std::mutex> lock(toLoadMutex);
+//         for (auto& coord : toUnload) pending.erase(coord); // remove the 
 
-    // clear the load and ready queue
-    std::lock_guard<std::mutex> readyLock(readyMutex);
-    std::unordered_set<glm::ivec3, IVec3Hash> unloadSet(toUnload.begin(), toUnload.end());
-    std::queue<ChunkReadyJob> filteredReady;
-    std::queue<ChunkLoadJob> filtered;
-    while (!ready.empty() && !toLoad.empty()) {
-        ChunkLoadJob loadJob = toLoad.front();
-        ChunkReadyJob readyJob = std::move(ready.front());
-        toLoad.pop();
-        ready.pop();
-        
-        if (!unloadSet.count(readyJob.coord)) filteredReady.push(readyJob);
-        if (pending.count(loadJob.coord)) filtered.push(loadJob);
+//         std::queue<ChunkLoadJob> filteredPending;
+//         while (!toLoad.empty()) {
+//             ChunkLoadJob loadJob = toLoad.front();
+//             toLoad.pop();
+//             if (pending.count(loadJob.coord)) filteredPending.push(loadJob);
+//         }
+//         toLoad = std::move(filteredPending);
+//     }
+    
+//     {
+//         std::lock_guard<std::mutex> lock(readyMutex);
+//         std::queue<ChunkReadyJob> filteredReady;
+//         while (!ready.empty()) {
+//             ChunkReadyJob readyJob = ready.front();
+//             ready.pop();
+//             if (!unloadSet.count(readyJob.coord)) filteredReady.push(std::move(readyJob));
+//         }
+//         ready = std::move(filteredReady);
+//     }
+// }
+
+void ChunkLoader::requestUnload(std::vector<glm::ivec3>& coords) {
+    std::lock_guard<std::mutex> lock(toUnloadMutex);
+    for (auto& coord : coords) {
+        pendingUnload.insert(coord);
+        toUnloadQueue.push(coord);
     }
+}
 
-    toLoad = std::move(filtered);
-    ready = std::move(filteredReady);
+void ChunkLoader::processUnload(World &world) {
+    std::lock_guard<std::mutex> lock(toUnloadMutex);
+
+    int processed = 0;
+    while (!toUnloadQueue.empty() && processed < chunksUnloadedPerFrame) {
+        glm::ivec3 coord = toUnloadQueue.front();
+        toUnloadQueue.pop();
+
+        if (!pendingUnload.count(coord)) continue;
+
+        pendingUnload.erase(coord);
+
+        {
+            std::lock_guard<std::mutex> lock(toLoadMutex);
+            pending.erase(coord);
+        }
+
+        if (world.hasChunk(coord)) world.unloadChunk(coord);
+
+        processed++;
+    }
 }
 
 void ChunkLoader::start() {
