@@ -3,69 +3,70 @@
 #include "chunkLoader.h"
 #include "../util/direction.h"
 
-const int chunksUploadedPerFrame = 8;
+const int chunksUploadedPerFrame = 16;
 const int chunksUnloadedPerFrame = 8;
 
 void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& verticesStorage) {
     switch (face) {
         case Direction::DOWN:
             verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,
-                x+0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,
-                x-0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f
+                // positions,            normals             texture coords
+                x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 0.0f,
+                x+0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 0.0f,
+                x+0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 1.0f,
+                x+0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 1.0f,
+                x-0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 1.0f,
+                x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 0.0f
             });
             break;
         case Direction::UP:
             verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,
-                x-0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,
-                x+0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,
-                x+0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,
-                x+0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,
-                x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f
+                x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
+                x-0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
+                x+0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
+                x+0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
+                x+0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
+                x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f
             });
             break;
-        case Direction::LEFT:
+        case Direction::LEFT: // U = -Z, V = Y
             verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,
-                x-0.5f, y-0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,
-                x-0.5f, y+0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,
-                x-0.5f, y+0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,
-                x-0.5f, y-0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,
-                x-0.5f, y+0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f
+                x-0.5f, y-0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
+                x-0.5f, y-0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
+                x-0.5f, y+0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
+                x-0.5f, y+0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
+                x-0.5f, y-0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
+                x-0.5f, y+0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 1.0f
             });
             break;
-        case Direction::RIGHT:
+        case Direction::RIGHT: // U = Z, V = Y
             verticesStorage.insert(verticesStorage.end(), {
-                x+0.5f, y+0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,
-                x+0.5f, y-0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,
-                x+0.5f, y-0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,
-                x+0.5f, y-0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,
-                x+0.5f, y+0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,
-                x+0.5f, y+0.5f, z+0.5f,  1.0f, 0.0f, 0.0f
+                x+0.5f, y+0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
+                x+0.5f, y-0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
+                x+0.5f, y-0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
+                x+0.5f, y-0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
+                x+0.5f, y+0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
+                x+0.5f, y+0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f
             });
             break;
-        case Direction::BACK:
+        case Direction::BACK: // U = -X, V = Y
             verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
-                x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
-                x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,
-                x+0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f
+                x-0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
+                x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
+                x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f,
+                x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f,
+                x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
+                x+0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f
             });
             break;
-        case Direction::FRONT:
+        case Direction::FRONT: // U = X, V = Y
             verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
-                x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
-                x+0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
-                x-0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,
-                x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f
+                x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 0.0f,
+                x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 1.0f,
+                x+0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 0.0f,
+                x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 0.0f,
+                x-0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f,
+                x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 1.0f
             });
             break;
         default:
@@ -146,13 +147,15 @@ void ChunkLoader::processReady(World &world) {
         glBindBuffer(GL_ARRAY_BUFFER, job.chunk.VBO);
         glBufferData(GL_ARRAY_BUFFER, job.vertices.size() * sizeof(float), job.vertices.data(), GL_DYNAMIC_DRAW);
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
         glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
         glEnableVertexAttribArray(1);
+        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
+        glEnableVertexAttribArray(2);
 
         job.chunk.dirty = false;
-        job.chunk.vertexCount = job.vertices.size() / 6;
+        job.chunk.vertexCount = job.vertices.size() / 8;
         world.setChunk(job.coord, std::move(job.chunk));
 
         processed++;
