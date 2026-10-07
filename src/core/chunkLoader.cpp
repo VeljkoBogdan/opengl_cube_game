@@ -3,14 +3,13 @@
 #include "chunkLoader.h"
 #include "../util/direction.h"
 
-const int chunksUploadedPerFrame = 16;
-const int chunksUnloadedPerFrame = 8;
+constexpr int chunksUploadedPerFrame = 8;
+constexpr int chunksUnloadedPerFrame = 8;
 
 void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& verticesStorage) {
     switch (face) {
-        case Direction::DOWN:
+        case DOWN:
             verticesStorage.insert(verticesStorage.end(), {
-                // positions,            normals             texture coords
                 x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 0.0f,
                 x+0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 0.0f,
                 x+0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 1.0f,
@@ -19,7 +18,7 @@ void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& ver
                 x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 0.0f
             });
             break;
-        case Direction::UP:
+        case UP:
             verticesStorage.insert(verticesStorage.end(), {
                 x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
                 x-0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
@@ -29,7 +28,7 @@ void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& ver
                 x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f
             });
             break;
-        case Direction::LEFT: // U = -Z, V = Y
+        case LEFT:
             verticesStorage.insert(verticesStorage.end(), {
                 x-0.5f, y-0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
                 x-0.5f, y-0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
@@ -39,7 +38,7 @@ void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& ver
                 x-0.5f, y+0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 1.0f
             });
             break;
-        case Direction::RIGHT: // U = Z, V = Y
+        case RIGHT:
             verticesStorage.insert(verticesStorage.end(), {
                 x+0.5f, y+0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
                 x+0.5f, y-0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
@@ -49,7 +48,7 @@ void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& ver
                 x+0.5f, y+0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f
             });
             break;
-        case Direction::BACK: // U = -X, V = Y
+        case BACK:
             verticesStorage.insert(verticesStorage.end(), {
                 x-0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
                 x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
@@ -59,7 +58,7 @@ void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& ver
                 x+0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f
             });
             break;
-        case Direction::FRONT: // U = X, V = Y
+        case FRONT:
             verticesStorage.insert(verticesStorage.end(), {
                 x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 0.0f,
                 x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 1.0f,
@@ -74,151 +73,30 @@ void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& ver
     }
 }
 
+// vertices are chunk local, the world offset is applied on the gpu
 void ChunkLoader::buildVertices(Chunk& chunk, std::vector<float>& vertices) {
     auto getBlock = [&](int x, int y, int z) -> int {
-        if (x >= 0 && x < 16 &&
-            y >= 0 && y < 16 &&
-            z >= 0 && z < 16)
+        if (x >= 0 && x < 16 && y >= 0 && y < 16 && z >= 0 && z < 16)
             return chunk.blocks[x][y][z];
-
-        // glm::ivec3 neighborPos = ;
-        // int nx = x, ny = y, nz = z;
-
-        // if (x < 0)  { neighborPos.x--; nx = 15; }
-        // if (x >= 16){ neighborPos.x++; nx = 0;  }
-        // if (y < 0)  { neighborPos.y--; ny = 15; }
-        // if (y >= 16){ neighborPos.y++; ny = 0;  }
-        // if (z < 0)  { neighborPos.z--; nz = 15; }
-        // if (z >= 16){ neighborPos.z++; nz = 0;  }
-
-        // auto it = world.getChunks().find(neighborPos);
-        // if (it == world.getChunks().end()) return 0; // no neighbor, treat as air
-        // return it->second.blocks[nx][ny][nz];
-
         return 0;
     };
-    
+
     for (int x = 0; x < CHUNK_WIDTH; x++)
     for (int y = 0; y < CHUNK_HEIGHT; y++)
     for (int z = 0; z < CHUNK_LENGTH; z++) {
         if (chunk.blocks[x][y][z] == 0) continue;
 
-        if (getBlock(x, y-1, z) == 0) addFace(Direction::DOWN,  x, y, z, vertices);
-        if (getBlock(x, y+1, z) == 0) addFace(Direction::UP,    x, y, z, vertices);
-        if (getBlock(x-1, y, z) == 0) addFace(Direction::LEFT,  x, y, z, vertices);
-        if (getBlock(x+1, y, z) == 0) addFace(Direction::RIGHT, x, y, z, vertices);
-        if (getBlock(x, y, z-1) == 0) addFace(Direction::FRONT, x, y, z, vertices);
-        if (getBlock(x, y, z+1) == 0) addFace(Direction::BACK,  x, y, z, vertices);
+        if (getBlock(x, y-1, z) == 0) addFace(DOWN,  x, y, z, vertices);
+        if (getBlock(x, y+1, z) == 0) addFace(UP,    x, y, z, vertices);
+        if (getBlock(x-1, y, z) == 0) addFace(LEFT,  x, y, z, vertices);
+        if (getBlock(x+1, y, z) == 0) addFace(RIGHT, x, y, z, vertices);
+        if (getBlock(x, y, z-1) == 0) addFace(FRONT, x, y, z, vertices);
+        if (getBlock(x, y, z+1) == 0) addFace(BACK,  x, y, z, vertices);
     }
 }
 
 ChunkLoader::~ChunkLoader() {
     stop();
-}
-
-void ChunkLoader::requestChunk(glm::ivec3 coord)
-{
-    std::lock_guard<std::mutex> lock(toLoadMutex);
-    std::lock_guard<std::mutex> lockUnload(toUnloadMutex);
-
-    pendingUnload.erase(coord);
-
-    if (pending.count(coord)) return; // return if already queued
-    pending.insert(coord);
-    toLoad.push({coord});
-}
-
-void ChunkLoader::processReady(World &world) {
-    std::lock_guard<std::mutex> lock(readyMutex);
-    std::lock_guard<std::mutex> lockUnload(toUnloadMutex);
-
-    int processed = 0;
-    while (!ready.empty() && processed < chunksUploadedPerFrame) {
-        ChunkReadyJob job = std::move(ready.front());
-        ready.pop();
-
-        if (pendingUnload.count(job.coord)) continue; // skip if pending unload
-
-        // upload
-        glGenVertexArrays(1, &job.chunk.VAO);
-        glGenBuffers(1, &job.chunk.VBO);
-
-        glBindVertexArray(job.chunk.VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, job.chunk.VBO);
-        glBufferData(GL_ARRAY_BUFFER, job.vertices.size() * sizeof(float), job.vertices.data(), GL_DYNAMIC_DRAW);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-        glEnableVertexAttribArray(0);
-        glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-        glEnableVertexAttribArray(1);
-        glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(6 * sizeof(float)));
-        glEnableVertexAttribArray(2);
-
-        job.chunk.dirty = false;
-        job.chunk.vertexCount = job.vertices.size() / 8;
-        world.setChunk(job.coord, std::move(job.chunk));
-
-        processed++;
-    }
-}
-
-// ! deprecated - laggy
-// void ChunkLoader::unloadChunks(std::vector<glm::ivec3> &toUnload) {
-//     std::unordered_set<glm::ivec3, IVec3Hash> unloadSet(toUnload.begin(), toUnload.end());
-//     {
-//         std::lock_guard<std::mutex> lock(toLoadMutex);
-//         for (auto& coord : toUnload) pending.erase(coord); // remove the 
-
-//         std::queue<ChunkLoadJob> filteredPending;
-//         while (!toLoad.empty()) {
-//             ChunkLoadJob loadJob = toLoad.front();
-//             toLoad.pop();
-//             if (pending.count(loadJob.coord)) filteredPending.push(loadJob);
-//         }
-//         toLoad = std::move(filteredPending);
-//     }
-    
-//     {
-//         std::lock_guard<std::mutex> lock(readyMutex);
-//         std::queue<ChunkReadyJob> filteredReady;
-//         while (!ready.empty()) {
-//             ChunkReadyJob readyJob = ready.front();
-//             ready.pop();
-//             if (!unloadSet.count(readyJob.coord)) filteredReady.push(std::move(readyJob));
-//         }
-//         ready = std::move(filteredReady);
-//     }
-// }
-
-void ChunkLoader::requestUnload(std::vector<glm::ivec3>& coords) {
-    std::lock_guard<std::mutex> lock(toUnloadMutex);
-    for (auto& coord : coords) {
-        pendingUnload.insert(coord);
-        toUnloadQueue.push(coord);
-    }
-}
-
-void ChunkLoader::processUnload(World &world) {
-    std::lock_guard<std::mutex> lock(toUnloadMutex);
-
-    int processed = 0;
-    while (!toUnloadQueue.empty() && processed < chunksUnloadedPerFrame) {
-        glm::ivec3 coord = toUnloadQueue.front();
-        toUnloadQueue.pop();
-
-        if (!pendingUnload.count(coord)) continue;
-
-        pendingUnload.erase(coord);
-
-        {
-            std::lock_guard<std::mutex> lock(toLoadMutex);
-            pending.erase(coord);
-        }
-
-        if (world.hasChunk(coord)) world.unloadChunk(coord);
-
-        processed++;
-    }
 }
 
 void ChunkLoader::start() {
@@ -231,22 +109,115 @@ void ChunkLoader::stop() {
     if (worker.joinable()) worker.join();
 }
 
+void ChunkLoader::setPlayerChunk(glm::ivec3 coord) {
+    std::lock_guard lock(dataMutex);
+    playerChunk = coord;
+}
+
+void ChunkLoader::requestChunk(glm::ivec3 coord) {
+    std::lock_guard lock(dataMutex);
+
+    pendingUnload.erase(coord);
+
+    if (pending.count(coord)) return;
+    pending.insert(coord);
+
+    glm::ivec3 diff = coord - playerChunk;
+    float priority = (float)(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
+    toLoad.push({coord, priority});
+}
+
+void ChunkLoader::requestUnload(const std::vector<glm::ivec3>& coords) {
+    std::lock_guard lock(dataMutex);
+
+    for (const auto& coord : coords) {
+        pending.erase(coord);
+
+        pendingUnload.insert(coord);
+        toUnloadQueue.push(coord);
+    }
+}
+
+void ChunkLoader::processReady(World& world, ChunkRenderer& chunkRenderer) {
+    std::vector<ChunkReadyJob> batch;
+    {
+        std::lock_guard lock(dataMutex);
+        int taken = 0;
+        while (!ready.empty() && taken < chunksUploadedPerFrame) {
+            batch.push_back(std::move(ready.front()));
+            ready.pop();
+            taken++;
+        }
+    }
+
+    for (auto& job : batch) {
+        bool cancelled;
+        {
+            std::lock_guard lock(dataMutex);
+            cancelled = pendingUnload.count(job.coord) > 0;
+        }
+        if (cancelled) continue;
+
+        // copy the mesh into the shared buffer
+        chunkRenderer.upload(job.chunk, job.vertices);
+
+        job.chunk.dirty = false;
+        world.setChunk(job.coord, std::move(job.chunk));
+
+        std::lock_guard lock(dataMutex);
+        pending.erase(job.coord);
+    }
+}
+
+void ChunkLoader::processUnload(World& world, ChunkRenderer& chunkRenderer) {
+    std::vector<glm::ivec3> batch;
+    {
+        std::lock_guard lock(dataMutex);
+        int taken = 0;
+        while (!toUnloadQueue.empty() && taken < chunksUnloadedPerFrame) {
+            glm::ivec3 coord = toUnloadQueue.front();
+            toUnloadQueue.pop();
+            if (pendingUnload.count(coord)) {
+                pendingUnload.erase(coord);
+                batch.push_back(coord);
+            }
+            taken++;
+        }
+    }
+
+    auto& chunks = world.getChunks();
+    for (auto& coord : batch) {
+        auto it = chunks.find(coord);
+        if (it == chunks.end()) continue;
+        chunkRenderer.release(it->second); // give the chunk vertex back to the arena
+        world.unloadChunk(coord);
+    }
+}
+
 void ChunkLoader::workerLoop() {
     while (running) {
         ChunkLoadJob job;
         bool hasJob = false;
+        bool cancelled = false;
 
         {
-            std::lock_guard<std::mutex> lock(toLoadMutex);
+            std::lock_guard lock(dataMutex);
             if (!toLoad.empty()) {
-                job = toLoad.front();
+                job = toLoad.top();
                 toLoad.pop();
                 hasJob = true;
+                cancelled = pendingUnload.count(job.coord) > 0;
             }
         }
 
         if (!hasJob) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+
+        if (cancelled) {
+            std::lock_guard lock(dataMutex);
+            pending.erase(job.coord);
             continue;
         }
 
@@ -256,13 +227,7 @@ void ChunkLoader::workerLoop() {
         std::vector<float> vertices;
         buildVertices(chunk, vertices);
 
-        {
-            std::lock_guard<std::mutex> lock(readyMutex);
-            ready.push({
-                job.coord,
-                std::move(chunk),
-                std::move(vertices)
-            });
-        }
+        std::lock_guard lock(dataMutex);
+        ready.push({job.coord, std::move(chunk), std::move(vertices)});
     }
 }

@@ -5,8 +5,7 @@
 
 struct Chunk {
     int blocks[CHUNK_WIDTH][CHUNK_HEIGHT][CHUNK_LENGTH];
-    unsigned int VBO, VAO;
-    int vertexCount;
+    int vertexCount, firstVertex = 0;
     bool dirty;
 };
 

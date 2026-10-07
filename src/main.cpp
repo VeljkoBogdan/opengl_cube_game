@@ -27,10 +27,8 @@ void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double xPos, double yPos);
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 void find_spawn(World& world, Camera& camera);
-
-// settings
-const unsigned int SCR_WIDTH = 1240;
-const unsigned int SCR_HEIGHT = 800;
+void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+    GLsizei length, const GLchar* message, const void* userParam);
 
 float deltaTime = 0.0f;
 float lastTime = 0.0f;
@@ -47,7 +45,7 @@ float pitch = 0.0f;
 // camera
 Camera camera;
 float speed = 60.0f;
-int renderDistance = 32;
+int renderDistance = 16;
 
 // world
 World world;
@@ -57,9 +55,12 @@ bool firstRun = true;
 
 int main() {
     glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#ifndef NDEBUG
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#endif
 
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
     if (window == NULL) {
@@ -73,16 +74,29 @@ int main() {
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
 
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
-    }    
+    }
 
+#ifndef NDEBUG
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(glDebugCallback, nullptr);
+    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION,
+        0, nullptr, GL_FALSE);
+#endif
+
+    // init rendering
+    chunkRenderer.init();
+
+    // shaders
     Shader shader(
         "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/vertex.vert",
         "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
     );
 
+    // fps
     double lastFPSTime = glfwGetTime();
 
     // enabling depth testing and back-face culling
@@ -138,14 +152,17 @@ int main() {
 
         glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
         if (currentPlayerChunk != lastPlayerChunk || firstRun) {
+            chunkLoader.setPlayerChunk(currentPlayerChunk);
+
             // unloading distant chunks
             auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, renderDistance);
             chunkLoader.requestUnload(chunksToUnload);
 
             // requesting chunks
             int half = renderDistance / 2;
+            int vertHalf = half / 2;
             for (int x = -half; x < half; x++)
-            for (int y = -half; y < half; y++)
+            for (int y = -vertHalf; y < vertHalf; y++)
             for (int z = -half; z < half; z++) {
                 glm::ivec3 coord = currentPlayerChunk + glm::ivec3(x, y, z);
                 if (!world.hasChunk(coord)) chunkLoader.requestChunk(coord);
@@ -164,35 +181,35 @@ int main() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // model view and projection
-        glm::mat4 model, view, proj;
-        model = view = proj = glm::mat4(1.0f);
+        // view and projection
+        glm::mat4 view, proj;
         view = camera.getViewMatrix();
-        proj = glm::perspective(glm::radians(camera.zoom), (float)SCR_WIDTH/(float)SCR_HEIGHT, 0.1f, 1000.0f);
+        proj = camera.getProjectionMatrix();
+        camera.updateFrustum();
 
         // setting uniforms
         shader.use();
         shader.setMat4("u_view", view);
         shader.setMat4("u_proj", proj);
-        shader.setVec3("u_ambient", glm::vec3(0.04f, 0.04f, 0.05f));
+        shader.setVec3("u_ambient", glm::vec3(0.08f, 0.08f, 0.09f));
         shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
-        shader.setVec3("u_lightPos", glm::vec3(128.0f));
+        shader.setVec3("u_lightPos", glm::vec3(16.0f));
 
         glBindTexture(GL_TEXTURE_2D, texture);
 
         {
-            Timer t("processUnload");
-            chunkLoader.processUnload(world);
+            //Timer t("processUnload");
+            chunkLoader.processUnload(world, chunkRenderer);
         }
 
         {
-            Timer t("processReady");
-            chunkLoader.processReady(world);
+            //Timer t("processReady");
+            chunkLoader.processReady(world, chunkRenderer);
         }
 
         {
-            Timer t("drawAll");
-            chunkRenderer.drawAll(shader);
+            //Timer t("drawAll");
+            chunkRenderer.drawAll(shader, camera);
         }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -276,4 +293,9 @@ void find_spawn(World& world, Camera& camera) {
     // camera.position = glm::vec3(0.0f, (float)above, 0.0f);
 
     camera.position = glm::vec3(0.0f, 80.0f, 0.0f);
+}
+
+// prints gl debug, only in debug builds
+void glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
+    std::cerr << "[GL] " << message << std::endl;
 }

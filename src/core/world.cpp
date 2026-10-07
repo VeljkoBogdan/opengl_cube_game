@@ -57,9 +57,6 @@ std::vector<glm::ivec3> World::getChunksToUnload(glm::ivec3 playerChunkPos, int 
 // }
 
 void World::unloadChunk(glm::ivec3 coord) {
-    Chunk& chunk = chunks.at(coord);
-    glDeleteVertexArrays(1, &chunk.VAO);
-    glDeleteBuffers(1, &chunk.VBO);
     chunks.erase(coord);
 }
 

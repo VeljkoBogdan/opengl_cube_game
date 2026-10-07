@@ -10,14 +10,14 @@ class WorldGenerator {
 public:
     WorldGenerator();
     WorldGenerator(int seed);
-    void generateChunk(Chunk& chunk, glm::ivec3 coords);
+    void generateChunk(Chunk& chunk, glm::ivec3 coords) const;
 
 private:
-    int seed;
     std::unique_ptr<OpenSimplexNoise::Noise> noise;
 
-    int getHeight(int worldX, int worldZ);
-    int getBlock(int worldX, int worldY, int worldZ, int surfaceY);
+    float getDensity(int worldX, int worldY, int worldZ);
+    bool isSolid(int worldX, int worldY, int worldZ);
+    int getBlockType(int worldX, int worldY, int worldZ);
 };
 
 #endif

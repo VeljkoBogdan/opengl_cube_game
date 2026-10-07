@@ -14,6 +14,8 @@ set(SOURCES
     src/core/chunkLoader.cpp
     src/rendering/chunkRenderer.cpp
     src/util/OpenSimplexNoise.cpp
+        src/rendering/DrawCmd.h
+        src/rendering/VertexArena.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
