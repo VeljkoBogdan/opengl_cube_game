@@ -1,11 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-#define STB_IMAGE_IMPLEMENTATION
-#include "util/stb_image.h"
-
 #include <iostream>
 #include <cmath>
-#include <unordered_map>
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -13,10 +9,10 @@
 
 #include "shader.h"
 #include "core/camera.h"
-#include "core/chunk.h"
 #include "core/world.h"
 #include "core/worldGenerator.h"
 #include "core/chunkLoader.h"
+#include "gl/Texture2D.h"
 #include "rendering/chunkRenderer.h"
 #include "util/IVec3Hash.h"
 #include "util/utils.h"
@@ -45,46 +41,44 @@ float pitch = 0.0f;
 // camera
 Camera camera;
 float speed = 60.0f;
-int renderDistance = 16;
+int renderDistance = 12;
 
 // world
-World world;
-ChunkRenderer chunkRenderer(world);
-ChunkLoader chunkLoader;
 bool firstRun = true;
 
 int main() {
-    glfwInit();
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    {
+        glfwInit();
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+        glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+        glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #ifndef NDEBUG
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+        glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
 
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-    if (window == NULL) {
-        std::cout << "Failed to create GLFW window" << std::endl;
-        glfwTerminate();
-        return -1;
-    }
-    glfwMakeContextCurrent(window);
-    glfwSwapInterval(0); // 1 = vsync, 0 = uncapped
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetScrollCallback(window, scroll_callback);
+        GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
+        if (window == NULL) {
+            std::cout << "Failed to create GLFW window" << std::endl;
+            glfwTerminate();
+            return -1;
+        }
+        glfwMakeContextCurrent(window);
+        glfwSwapInterval(0); // 1 = vsync, 0 = uncapped
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+        glfwSetCursorPosCallback(window, mouse_callback);
+        glfwSetScrollCallback(window, scroll_callback);
 
-    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) {
-        std::cout << "Failed to initialize GLAD" << std::endl;
-        return -1;
-    }
+        if (!gladLoadGL(glfwGetProcAddress)) {
+            std::cout << "Failed to initialize GLAD" << std::endl;
+            return -1;
+        }
 
 #ifndef NDEBUG
-    glEnable(GL_DEBUG_OUTPUT);
-    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
-    glDebugMessageCallback(glDebugCallback, nullptr);
-    glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION,
-        0, nullptr, GL_FALSE);
+        glEnable(GL_DEBUG_OUTPUT);
+        glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+        glDebugMessageCallback(glDebugCallback, nullptr);
+        glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DEBUG_SEVERITY_NOTIFICATION,
+            0, nullptr, GL_FALSE);
 #endif
 
     // init rendering
@@ -95,130 +89,128 @@ int main() {
         "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/vertex.vert",
         "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
     );
+        World world;
+        ChunkRenderer chunkRenderer(world);
+        ChunkLoader chunkLoader;
+        Texture2D dirt;
+        Shader shader(
+                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/vertex.vert",
+                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
+        );
+        chunkRenderer.init();
+        dirt.load(R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\textures\dirt.png)", true);
 
-    // fps
-    double lastFPSTime = glfwGetTime();
-
-    // enabling depth testing and back-face culling
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glCullFace(GL_BACK);
-
-    // textures
-    unsigned int texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    int width, height, nrChannels;
-    unsigned char* data = stbi_load("../resources/textures/dirt.png", &width, &height, &nrChannels, 0);
-    if (data) {
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
-        glGenerateMipmap(GL_TEXTURE_2D);
-    } else {
-        std::cout << "Failed to load texture" << std::endl;
-    }
-    stbi_image_free(data);
-
-    // Applying texture wrap and filters
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
-    glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-    // locking mouse
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    // GAME ------------------------
-    find_spawn(world, camera);
-
-    chunkLoader.start();
-
-    glm::ivec3 lastPlayerChunk = worldToChunkPos(camera.position);
-
-    // Loop
-    while (!glfwWindowShouldClose(window)) {
-        // getting delta time
-        float currentTime = glfwGetTime();
-        deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
+        );
 
         // fps
-        double currentFPSTime = glfwGetTime();
-        nbFrames++;
-        if (currentFPSTime - lastFPSTime >= 1.0) {
-            printf("%f ms/frame\n", 1000.0/double(nbFrames));
-            nbFrames = 0;
-            lastFPSTime = currentFPSTime;
-        }
+        double lastFPSTime = glfwGetTime();
 
-        glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
-        if (currentPlayerChunk != lastPlayerChunk || firstRun) {
-            chunkLoader.setPlayerChunk(currentPlayerChunk);
+        // enabling depth testing and back-face culling
+        glEnable(GL_DEPTH_TEST);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
 
-            // unloading distant chunks
-            auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, renderDistance);
-            chunkLoader.requestUnload(chunksToUnload);
+        // locking mouse
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-            // requesting chunks
-            int half = renderDistance / 2;
-            int vertHalf = half / 2;
-            for (int x = -half; x < half; x++)
-            for (int y = -vertHalf; y < vertHalf; y++)
-            for (int z = -half; z < half; z++) {
-                glm::ivec3 coord = currentPlayerChunk + glm::ivec3(x, y, z);
-                if (!world.hasChunk(coord)) chunkLoader.requestChunk(coord);
+        // GAME ------------------------
+        find_spawn(world, camera);
+
+        chunkLoader.start();
+
+        glm::ivec3 lastPlayerChunk = worldToChunkPos(camera.position);
+
+        // Loop
+        while (!glfwWindowShouldClose(window)) {
+            // getting delta time
+            float currentTime = glfwGetTime();
+            deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+
+            // fps
+            double currentFPSTime = glfwGetTime();
+            nbFrames++;
+            if (currentFPSTime - lastFPSTime >= 1.0) {
+                printf("%f ms/frame\n", 1000.0/double(nbFrames));
+                nbFrames = 0;
+                lastFPSTime = currentFPSTime;
             }
 
-            lastPlayerChunk = currentPlayerChunk;
-            firstRun = false;
-        }
+            glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
+            if (currentPlayerChunk != lastPlayerChunk || firstRun) {
+                chunkLoader.setPlayerChunk(currentPlayerChunk);
 
-        // input
-        // -----
-        processInput(window);
+                // unloading distant chunks
+                auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, renderDistance);
+                chunkLoader.requestUnload(chunksToUnload);
 
-        // render
-        // ------
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+                // requesting chunks
+                int half = renderDistance / 2;
+                int vertHalf = half / 2;
+                for (int x = -half; x < half; x++)
+                    for (int y = -vertHalf; y < vertHalf; y++)
+                        for (int z = -half; z < half; z++) {
+                            glm::ivec3 coord = currentPlayerChunk + glm::ivec3(x, y, z);
+                            if (!world.hasChunk(coord)) chunkLoader.requestChunk(coord);
+                        }
 
-        // view and projection
-        glm::mat4 view, proj;
-        view = camera.getViewMatrix();
-        proj = camera.getProjectionMatrix();
-        camera.updateFrustum();
+                lastPlayerChunk = currentPlayerChunk;
+                firstRun = false;
+            }
 
-        // setting uniforms
-        shader.use();
-        shader.setMat4("u_view", view);
-        shader.setMat4("u_proj", proj);
-        shader.setVec3("u_ambient", glm::vec3(0.08f, 0.08f, 0.09f));
-        shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
-        shader.setVec3("u_lightPos", glm::vec3(16.0f));
+            // input
+            // -----
+            processInput(window);
 
-        glBindTexture(GL_TEXTURE_2D, texture);
+            // render
+            // ------
+            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        {
-            //Timer t("processUnload");
-            chunkLoader.processUnload(world, chunkRenderer);
-        }
+            // view and projection
+            glm::mat4 view, proj;
+            view = camera.getViewMatrix();
+            proj = camera.getProjectionMatrix();
+            camera.updateFrustum();
 
-        {
-            //Timer t("processReady");
-            chunkLoader.processReady(world, chunkRenderer);
-        }
+            // setting uniforms
+            shader.use();
+            dirt.bind(0);
+            shader.setInt("u_texture", 0);
+            shader.setMat4("u_view", view);
+            shader.setMat4("u_proj", proj);
+            shader.setVec3("u_ambient", glm::vec3(0.2f, 0.2f, 0.2f));
+            shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
+            shader.setVec3("u_lightPos", glm::vec3(16'000'000.0f, 13'000'000.0f, 10'000'000.0f));
 
-        {
-            //Timer t("drawAll");
-            chunkRenderer.drawAll(shader, camera);
-        }
+            {
+                //Timer t("processUnload");
+                chunkLoader.processUnload(world, chunkRenderer);
+            }
+
+            {
+                //Timer t("processReady");
+                chunkLoader.processReady(world, chunkRenderer);
+            }
+
+            {
+                //Timer t("drawAll");
+                chunkRenderer.drawAll(shader, camera);
+            }
 
         // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
         // -------------------------------------------------------------------------------
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+            // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
+            // -------------------------------------------------------------------------------
+            glfwSwapBuffers(window);
+            glfwPollEvents();
+        }
 
-    chunkLoader.stop();
+        chunkLoader.stop();
+    }
 
     // glfw: terminate, clearing all previously allocated GLFW resources.
     // ------------------------------------------------------------------

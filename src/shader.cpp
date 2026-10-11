@@ -1,5 +1,7 @@
 #include "shader.h"
 
+#include "GLFW/glfw3.h"
+
 Shader::Shader(const char *vertexPath, const char *fragmentPath) {
     std::string vertexCode;
     std::string fragmentCode;
@@ -92,4 +94,8 @@ void Shader::setVec3(const std::string &name, glm::vec3 value) const {
 
 void Shader::setVec3(const std::string &name, float x, float y, float z) const {
     glUniform3f(glGetUniformLocation(ID, name.c_str()), x, y, z);
+}
+
+void Shader::destroy() const {
+    if (ID && glfwGetCurrentContext()) glDeleteProgram(ID);
 }

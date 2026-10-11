@@ -16,6 +16,14 @@ set(SOURCES
     src/util/OpenSimplexNoise.cpp
         src/rendering/DrawCmd.h
         src/rendering/VertexArena.h
+        src/gl/GLBuffer.cpp
+        src/gl/GLBuffer.h
+        src/gl/VertexArray.cpp
+        src/gl/VertexArray.h
+        src/gl/Mesh.cpp
+        src/gl/Mesh.h
+        src/gl/Texture2D.cpp
+        src/gl/Texture2D.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
