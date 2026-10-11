@@ -24,6 +24,7 @@ set(SOURCES
         src/gl/Mesh.h
         src/gl/Texture2D.cpp
         src/gl/Texture2D.h
+        src/rendering/Crosshair.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

@@ -14,7 +14,7 @@
 #include "core/chunkLoader.h"
 #include "gl/Texture2D.h"
 #include "rendering/chunkRenderer.h"
-#include "util/IVec3Hash.h"
+#include "rendering/Crosshair.h"
 #include "util/utils.h"
 #include "util/timer.h"
 
@@ -81,14 +81,6 @@ int main() {
             0, nullptr, GL_FALSE);
 #endif
 
-    // init rendering
-    chunkRenderer.init();
-
-    // shaders
-    Shader shader(
-        "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/vertex.vert",
-        "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
-    );
         World world;
         ChunkRenderer chunkRenderer(world);
         ChunkLoader chunkLoader;
@@ -100,6 +92,9 @@ int main() {
         chunkRenderer.init();
         dirt.load(R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\textures\dirt.png)", true);
 
+        Crosshair crosshair(
+            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.vert)",
+            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.frag)"
         );
 
         // fps
@@ -198,11 +193,11 @@ int main() {
                 chunkRenderer.drawAll(shader, camera);
             }
 
-        // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
-        // -------------------------------------------------------------------------------
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+            // crosshair render
+            int framebufferWidth, framebufferHeight;
+            glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
+            crosshair.draw(framebufferWidth, framebufferHeight);
+
             // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
             // -------------------------------------------------------------------------------
             glfwSwapBuffers(window);
