@@ -1,5 +1,6 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <cmath>
 #include <iostream>
 #include <cmath>
 
@@ -45,6 +46,7 @@ int renderDistance = 12;
 
 // world
 bool firstRun = true;
+float dayLengthSeconds = 60.0f * 10.0f;
 
 int main() {
     {
@@ -89,6 +91,9 @@ int main() {
                 "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/vertex.vert",
                 "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
         );
+        Shader skyboxShader(
+            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\skybox.vert)",
+            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\skybox.frag)");
         chunkRenderer.init();
         dirt.load(R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\textures\dirt.png)", true);
 
@@ -96,6 +101,10 @@ int main() {
             R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.vert)",
             R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.frag)"
         );
+
+        // time
+        float timeOfDay = 0.0f;
+        glm::vec3 sunDir;
 
         // fps
         double lastFPSTime = glfwGetTime();
@@ -131,6 +140,11 @@ int main() {
                 lastFPSTime = currentFPSTime;
             }
 
+            // time
+            timeOfDay += deltaTime / dayLengthSeconds;
+            float a = timeOfDay * 2.f * glm::pi<float>();
+            sunDir = glm::normalize(glm::vec3(std::cos(a), std::sin(a), 0.2f));
+
             glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
             if (currentPlayerChunk != lastPlayerChunk || firstRun) {
                 chunkLoader.setPlayerChunk(currentPlayerChunk);
@@ -159,8 +173,10 @@ int main() {
 
             // render
             // ------
-            glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glm::vec3 horizonColor = glm::vec3(0.6, 0.5, 0.4);
+            glm::vec3 zenithColor = glm::vec3(0.6, 0.6, 0.7);
 
             // view and projection
             glm::mat4 view, proj;
@@ -192,6 +208,18 @@ int main() {
                 //Timer t("drawAll");
                 chunkRenderer.drawAll(shader, camera);
             }
+
+            // skybox render
+            glDepthFunc(GL_LEQUAL);
+            glDisable(GL_CULL_FACE);
+            skyboxShader.use();
+            skyboxShader.setMat4("u_invViewProj", glm::inverse(proj * glm::mat4(glm::mat3(view)))); // mat3 to delete translation
+            skyboxShader.setVec3("u_horizonColor", horizonColor);
+            skyboxShader.setVec3("u_zenithColor", zenithColor);
+            skyboxShader.setVec3("u_sunDir", sunDir);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glDepthFunc(GL_LESS);
+            glEnable(GL_CULL_FACE);
 
             // crosshair render
             int framebufferWidth, framebufferHeight;
