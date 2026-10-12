@@ -88,8 +88,8 @@ int main() {
         ChunkLoader chunkLoader;
         Texture2D dirt;
         Shader shader(
-                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/vertex.vert",
-                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/fragment.frag"
+                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/chunk.vert",
+                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/chunk.frag"
         );
         Shader skyboxShader(
             R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\skybox.vert)",
@@ -192,7 +192,9 @@ int main() {
             shader.setMat4("u_proj", proj);
             shader.setVec3("u_ambient", glm::vec3(0.2f, 0.2f, 0.2f));
             shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
-            shader.setVec3("u_lightPos", glm::vec3(16'000'000.0f, 13'000'000.0f, 10'000'000.0f));
+            shader.setVec3("u_sunDir", sunDir);
+            shader.setVec3("u_horizonColor", horizonColor);
+            shader.setVec3("u_camPos", camera.position);
 
             {
                 //Timer t("processUnload");
