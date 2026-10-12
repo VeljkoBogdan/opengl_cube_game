@@ -21,6 +21,7 @@ public:
     void updateFrustum();
 
     float zoom = 90.0f;
+    float aspect = SCR_RATIO;
 };
 
 #endif

@@ -58,8 +58,12 @@ int main() {
         glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 #endif
 
-        GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "LearnOpenGL", NULL, NULL);
-        if (window == NULL) {
+        GLFWmonitor* primaryMonitor = glfwGetPrimaryMonitor();
+        const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
+        int scrWidth = mode->width;
+        int scrHeight = mode->height;
+        GLFWwindow* window = glfwCreateWindow(scrWidth, scrHeight, "LearnOpenGL", nullptr, nullptr);
+        if (window == nullptr) {
             std::cout << "Failed to create GLFW window" << std::endl;
             glfwTerminate();
             return -1;
@@ -69,6 +73,7 @@ int main() {
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
         glfwSetCursorPosCallback(window, mouse_callback);
         glfwSetScrollCallback(window, scroll_callback);
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
         if (!gladLoadGL(glfwGetProcAddress)) {
             std::cout << "Failed to initialize GLAD" << std::endl;
@@ -226,6 +231,7 @@ int main() {
             // crosshair render
             int framebufferWidth, framebufferHeight;
             glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
+            framebuffer_size_callback(window, framebufferWidth, framebufferHeight);
             crosshair.draw(framebufferWidth, framebufferHeight);
 
             // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
@@ -261,9 +267,9 @@ void processInput(GLFWwindow *window) {
 // ---------------------------------------------------------------------------------------------
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
-    // make sure the viewport matches the new window dimensions; note that width and 
-    // height will be significantly larger than specified on retina displays.
+    if (width == 0 || height == 0) return;
     glViewport(0, 0, width, height);
+    camera.aspect = (float)width / (float)height;
 }
 
 void mouse_callback(GLFWwindow* window, double xPos, double yPos) {

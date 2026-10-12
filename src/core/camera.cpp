@@ -5,7 +5,7 @@ glm::mat4 Camera::getViewMatrix() const {
 }
 
 glm::mat4 Camera::getProjectionMatrix() const {
-    return glm::perspective(glm::radians(zoom), SCR_RATIO, 0.1f, 1000.f);
+    return glm::perspective(glm::radians(zoom), aspect, 0.1f, 1000.f);
 }
 
 bool Camera::isChunkVisible(const glm::ivec3 chunkPos) const {
