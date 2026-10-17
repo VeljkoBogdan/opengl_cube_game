@@ -125,7 +125,7 @@ int main() {
         // GAME ------------------------
         find_spawn(world, camera);
 
-        chunkLoader.start();
+        chunkLoader.start(world);
 
         glm::ivec3 lastPlayerChunk = worldToChunkPos(camera.position);
 
@@ -201,20 +201,10 @@ int main() {
             shader.setVec3("u_horizonColor", horizonColor);
             shader.setVec3("u_camPos", camera.position);
 
-            {
-                //Timer t("processUnload");
-                chunkLoader.processUnload(world, chunkRenderer);
-            }
-
-            {
-                //Timer t("processReady");
-                chunkLoader.processReady(world, chunkRenderer);
-            }
-
-            {
-                //Timer t("drawAll");
-                chunkRenderer.drawAll(shader, camera);
-            }
+            chunkLoader.queueDirty(world);
+            chunkLoader.processUnload(world, chunkRenderer);
+            chunkLoader.processReady(world, chunkRenderer);
+            chunkRenderer.drawAll(shader, camera);
 
             // skybox render
             glDepthFunc(GL_LEQUAL);

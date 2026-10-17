@@ -73,35 +73,70 @@ void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& ver
     }
 }
 
-// vertices are chunk local, the world offset is applied on the gpu
-void ChunkLoader::buildVertices(Chunk& chunk, std::vector<float>& vertices) {
-    auto getBlock = [&](int x, int y, int z) -> int {
-        if (x >= 0 && x < 16 && y >= 0 && y < 16 && z >= 0 && z < 16)
-            return chunk.blocks[x][y][z];
-        return 0;
-    };
+bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint8_t(&solid)[18][18][18]) {
+    std::memset(solid, 0, sizeof(solid));
 
+    std::lock_guard lock(dataMutex);
+    auto& chunks = world->getChunks();
+
+    if (!self) {
+        auto it = chunks.find(coord);
+        if (it == chunks.end()) return false;
+        self = &it->second;
+    }
+
+    for (int x = 0; x < CHUNK_WIDTH; x++)
+        for (int y = 0; y < CHUNK_HEIGHT; y++)
+            for (int z = 0; z < CHUNK_LENGTH; z++)
+                solid[x+1][y+1][z+1] = self->blocks[x][y][z] != 0;
+
+    auto getChunk = [&](int dx, int dy, int dz) -> Chunk* {
+        auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
+        return it == chunks.end() ? nullptr : &it->second;
+    };
+    Chunk* nx = getChunk(-1, 0, 0);
+    Chunk* px = getChunk(1, 0, 0);
+    Chunk* ny = getChunk(0, -1, 0);
+    Chunk* py = getChunk(0, 1, 0);
+    Chunk* nz = getChunk(0, 0, -1);
+    Chunk* pz = getChunk(0, 0, 1);
+
+    for (int a = 0; a < 16; a++)
+        for (int b = 0; b < 16; b++) {
+            if (nx) solid[0][a+1][b+1]  = nx->blocks[15][a][b] != 0;
+            if (px) solid[17][a+1][b+1] = px->blocks[0][a][b]  != 0;
+            if (ny) solid[a+1][0][b+1]  = ny->blocks[a][15][b] != 0;
+            if (py) solid[a+1][17][b+1] = py->blocks[a][0][b]  != 0;
+            if (nz) solid[a+1][b+1][0]  = nz->blocks[a][b][15] != 0;
+            if (pz) solid[a+1][b+1][17] = pz->blocks[a][b][0]  != 0;
+        }
+    return true;
+}
+
+void ChunkLoader::meshFromSolid(const uint8_t(&solid)[18][18][18], std::vector<float> &vertices) {
     for (int x = 0; x < CHUNK_WIDTH; x++)
     for (int y = 0; y < CHUNK_HEIGHT; y++)
     for (int z = 0; z < CHUNK_LENGTH; z++) {
-        if (chunk.blocks[x][y][z] == 0) continue;
+        if (!solid[x+1][y+1][z+1]) continue;
 
-        if (getBlock(x, y-1, z) == 0) addFace(DOWN,  x, y, z, vertices);
-        if (getBlock(x, y+1, z) == 0) addFace(UP,    x, y, z, vertices);
-        if (getBlock(x-1, y, z) == 0) addFace(LEFT,  x, y, z, vertices);
-        if (getBlock(x+1, y, z) == 0) addFace(RIGHT, x, y, z, vertices);
-        if (getBlock(x, y, z-1) == 0) addFace(FRONT, x, y, z, vertices);
-        if (getBlock(x, y, z+1) == 0) addFace(BACK,  x, y, z, vertices);
+        if (!solid[x+1][y][z+1])   addFace(DOWN,  x, y, z, vertices);
+        if (!solid[x+1][y+2][z+1]) addFace(UP,    x, y, z, vertices);
+        if (!solid[x][y+1][z+1])   addFace(LEFT,  x, y, z, vertices);
+        if (!solid[x+2][y+1][z+1]) addFace(RIGHT, x, y, z, vertices);
+        if (!solid[x+1][y+1][z])   addFace(FRONT, x, y, z, vertices);
+        if (!solid[x+1][y+1][z+2]) addFace(BACK,  x, y, z, vertices);
     }
 }
+
 
 ChunkLoader::~ChunkLoader() {
     stop();
 }
 
-void ChunkLoader::start() {
+void ChunkLoader::start(World& world) {
     running = true;
     worker = std::thread(&ChunkLoader::workerLoop, this);
+    this->world = &world;
 }
 
 void ChunkLoader::stop() {
@@ -138,6 +173,20 @@ void ChunkLoader::requestUnload(const std::vector<glm::ivec3>& coords) {
     }
 }
 
+void ChunkLoader::queueDirty(World &world) {
+    std::lock_guard lock(dataMutex);
+    for (auto& [coord, chunk] : world.getChunks()) {
+        if (!chunk.dirty || remeshPending.count(coord)) continue;
+        chunk.dirty = false;
+        remeshPending.insert(coord);
+        toRemesh.push(coord);
+    }
+}
+
+static const glm::ivec3 neighborDirs[6] = {
+    {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}
+};
+
 void ChunkLoader::processReady(World& world, ChunkRenderer& chunkRenderer) {
     std::vector<ChunkReadyJob> batch;
     {
@@ -150,7 +199,20 @@ void ChunkLoader::processReady(World& world, ChunkRenderer& chunkRenderer) {
         }
     }
 
+    auto& chunks = world.getChunks();
     for (auto& job : batch) {
+        if (job.remesh) {
+            {
+                std::lock_guard lock(dataMutex);
+                remeshPending.erase(job.coord);
+            }
+            auto it = chunks.find(job.coord);
+            if (it == chunks.end()) continue;
+            chunkRenderer.release(it->second);
+            chunkRenderer.upload(it->second, job.vertices);
+            continue;
+        }
+
         bool cancelled;
         {
             std::lock_guard lock(dataMutex);
@@ -160,12 +222,17 @@ void ChunkLoader::processReady(World& world, ChunkRenderer& chunkRenderer) {
 
         // copy the mesh into the shared buffer
         chunkRenderer.upload(job.chunk, job.vertices);
-
         job.chunk.dirty = false;
-        world.setChunk(job.coord, std::move(job.chunk));
+        {
+            std::lock_guard lock(dataMutex);
+            world.setChunk(job.coord, std::move(job.chunk));
+            pending.erase(job.coord);
+        }
 
-        std::lock_guard lock(dataMutex);
-        pending.erase(job.coord);
+        for (const glm::ivec3& d : neighborDirs) {
+            auto it = chunks.find(job.coord + d);
+            if (it != chunks.end() && it->second.vertexCount > 0) it->second.dirty = true;
+        }
     }
 }
 
@@ -190,19 +257,28 @@ void ChunkLoader::processUnload(World& world, ChunkRenderer& chunkRenderer) {
         auto it = chunks.find(coord);
         if (it == chunks.end()) continue;
         chunkRenderer.release(it->second); // give the chunk vertex back to the arena
-        world.unloadChunk(coord);
+        {
+            std::lock_guard lock(dataMutex);
+            world.unloadChunk(coord);
+        }
     }
 }
 
 void ChunkLoader::workerLoop() {
     while (running) {
         ChunkLoadJob job;
+        glm::ivec3 remeshCoord{0};
         bool hasJob = false;
+        bool isRemesh = false;
         bool cancelled = false;
 
         {
             std::lock_guard lock(dataMutex);
-            if (!toLoad.empty()) {
+            if (!toRemesh.empty()) {
+                remeshCoord = toRemesh.front();
+                toRemesh.pop();
+                hasJob = isRemesh = true;
+            } else if (!toLoad.empty()) {
                 job = toLoad.top();
                 toLoad.pop();
                 hasJob = true;
@@ -215,6 +291,18 @@ void ChunkLoader::workerLoop() {
             continue;
         }
 
+        if (isRemesh) {
+            uint8_t solid[18][18][18];
+            std::vector<float> vertices;
+            bool ok = gatherSolid(remeshCoord, nullptr, solid);
+            if (ok) meshFromSolid(solid, vertices);
+
+            std::lock_guard lock(dataMutex);
+            if (ok) ready.push({remeshCoord, Chunk(), std::move(vertices), true});
+            else remeshPending.erase(remeshCoord);
+            continue;
+        }
+
         if (cancelled) {
             std::lock_guard lock(dataMutex);
             pending.erase(job.coord);
@@ -224,8 +312,10 @@ void ChunkLoader::workerLoop() {
         Chunk chunk;
         generator.generateChunk(chunk, job.coord);
 
+        uint8_t solid[18][18][18];
+        gatherSolid(job.coord, &chunk, solid);
         std::vector<float> vertices;
-        buildVertices(chunk, vertices);
+        meshFromSolid(solid, vertices);
 
         std::lock_guard lock(dataMutex);
         ready.push({job.coord, std::move(chunk), std::move(vertices)});
