@@ -25,6 +25,10 @@ set(SOURCES
         src/gl/Texture2D.cpp
         src/gl/Texture2D.h
         src/rendering/Crosshair.h
+        src/rendering/BlockOutline.cpp
+        src/rendering/BlockOutline.h
+        src/core/Raycast.cpp
+        src/core/Raycast.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

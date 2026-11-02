@@ -13,7 +13,9 @@
 #include "core/world.h"
 #include "core/worldGenerator.h"
 #include "core/chunkLoader.h"
+#include "core/Raycast.h"
 #include "gl/Texture2D.h"
+#include "rendering/BlockOutline.h"
 #include "rendering/chunkRenderer.h"
 #include "rendering/Crosshair.h"
 #include "util/utils.h"
@@ -41,8 +43,8 @@ float pitch = 0.0f;
 
 // camera
 Camera camera;
-float speed = 60.0f;
-int renderDistance = 12;
+float speed = 32.0f;
+int renderDistance = 16;
 
 // world
 bool firstRun = true;
@@ -106,6 +108,8 @@ int main() {
             R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.vert)",
             R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.frag)"
         );
+        BlockOutline blockOutline(R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\outline.vert)",
+            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\outline.frag)");
 
         // time
         float timeOfDay = 0.0f;
@@ -208,6 +212,16 @@ int main() {
 
             // chunk render
             chunkRenderer.drawAll(shader, camera);
+
+            // outline render
+            float reach = 6.0f;
+            Raycast ray(camera.position, camera.position + camera.target * reach);
+            while (auto p = ray.getNextTargetPos()) {
+                if (world.getBlock(*p) != 0) {
+                    blockOutline.draw(p.value(), view, proj);
+                    break;
+                }
+            }
 
             // skybox render
             glDepthFunc(GL_LEQUAL);
