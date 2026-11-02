@@ -8,7 +8,7 @@
 
 class Crosshair {
 public:
-    Crosshair(const char* vertPath, const char* fragPath, float armLength = 10.0f, float thickness = 2.0f)
+    Crosshair(const char* vertPath, const char* fragPath, float armLength = 4.0f, float thickness = 2.0f)
         : shader(vertPath, fragPath) {
         const float h = thickness * 0.5f;
         const float l = armLength;
