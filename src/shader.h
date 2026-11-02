@@ -18,6 +18,8 @@ public:
 
     Shader(const char* vertexPath, const char* fragmentPath);
     ~Shader() { destroy(); }
+
+
     Shader(const Shader&) = delete;
     Shader& operator=(const Shader&) = delete;
 
@@ -26,6 +28,7 @@ public:
     void setInt(const std::string &name, int value) const;
     void setFloat(const std::string &name, float value) const;
     void setMat4(const std::string &name, glm::mat4 value) const;
+    void setVec2(const std::string &name, glm::vec2 value) const;
     void setVec3(const std::string &name, glm::vec3 value) const;
     void setVec3(const std::string &name, float x, float y, float z) const;
 

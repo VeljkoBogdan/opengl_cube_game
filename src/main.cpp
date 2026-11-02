@@ -180,8 +180,8 @@ int main() {
             // ------
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            glm::vec3 horizonColor = glm::vec3(0.6, 0.5, 0.4);
-            glm::vec3 zenithColor = glm::vec3(0.6, 0.6, 0.7);
+            glm::vec3 zenithColor = glm::vec3(72.0f/256.0f, 195.0f/256.0f, 231.0f/256.0f);
+            glm::vec3 horizonColor = glm::vec3(238.0f/256.0f, 116.0f/256.0f, 33.0f/256.0f);
 
             // view and projection
             glm::mat4 view, proj;
@@ -200,10 +200,13 @@ int main() {
             shader.setVec3("u_sunDir", sunDir);
             shader.setVec3("u_horizonColor", horizonColor);
             shader.setVec3("u_camPos", camera.position);
+            shader.setVec2("u_fog", glm::vec2((renderDistance / 2.0f * 0.75f) * 16.0f, renderDistance * 8.0f));
 
             chunkLoader.queueDirty(world);
             chunkLoader.processUnload(world, chunkRenderer);
             chunkLoader.processReady(world, chunkRenderer);
+
+            // chunk render
             chunkRenderer.drawAll(shader, camera);
 
             // skybox render
