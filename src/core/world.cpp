@@ -29,6 +29,18 @@ void World::setBlock(glm::ivec3 worldPos, int blockId) {
     if (it == chunks.end()) return;
     glm::ivec3 local = worldToLocalPos(worldPos);
     it->second.blocks[local.x][local.y][local.z] = blockId;
+    it->second.dirty = true;
+
+    const glm::ivec3 size(CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_LENGTH);
+    for (int axis = 0; axis < 3; axis++) {
+        glm::ivec3 dir(0);
+        if (local[axis] == 0) dir[axis] = -1;
+        else if (local[axis] == size[axis] - 1) dir[axis] = 1;
+        else continue;
+
+        auto neighbor = chunks.find(chunkPos + dir);
+        if (neighbor != chunks.end()) neighbor->second.dirty = true;
+    }
 }
 
 std::vector<glm::ivec3> World::getChunksToUnload(glm::ivec3 playerChunkPos, int renderDistance) {

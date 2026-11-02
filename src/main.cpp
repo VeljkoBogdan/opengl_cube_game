@@ -21,6 +21,7 @@
 #include "util/utils.h"
 #include "util/timer.h"
 
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double xPos, double yPos);
@@ -48,7 +49,9 @@ int renderDistance = 16;
 
 // world
 bool firstRun = true;
+bool breakRequested = false;
 float dayLengthSeconds = 60.0f * 10.0f;
+
 
 int main() {
     {
@@ -72,7 +75,7 @@ int main() {
         }
         glfwMakeContextCurrent(window);
         glfwSwapInterval(0); // 1 = vsync, 0 = uncapped
-        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+        glfwSetMouseButtonCallback(window, mouse_button_callback);
         glfwSetCursorPosCallback(window, mouse_callback);
         glfwSetScrollCallback(window, scroll_callback);
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
@@ -176,6 +179,25 @@ int main() {
                 firstRun = false;
             }
 
+            // looking at block
+            float reach = 6.0f;
+            std::optional<glm::ivec3> target;
+            Raycast ray(camera.position, camera.position + camera.target * reach);
+            while (auto p = ray.getNextTargetPos()) {
+                if (world.getBlock(*p) != 0) {
+                    target = *p;
+                    break;
+                }
+            }
+
+            // breaking blocks
+            if (breakRequested) {
+                breakRequested = false;
+                if (target) {
+                    world.setBlock(*target, 0);
+                }
+            }
+
             // input
             // -----
             processInput(window);
@@ -214,14 +236,7 @@ int main() {
             chunkRenderer.drawAll(shader, camera);
 
             // outline render
-            float reach = 6.0f;
-            Raycast ray(camera.position, camera.position + camera.target * reach);
-            while (auto p = ray.getNextTargetPos()) {
-                if (world.getBlock(*p) != 0) {
-                    blockOutline.draw(p.value(), view, proj);
-                    break;
-                }
-            }
+            if (target) blockOutline.draw(*target, view, proj);
 
             // skybox render
             glDepthFunc(GL_LEQUAL);
@@ -268,6 +283,10 @@ void processInput(GLFWwindow *window) {
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) camera.position += speed * deltaTime * glm::vec3(0.0f, 1.0f, 0.0f);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) camera.position -= speed * deltaTime * glm::vec3(0.0f, 1.0f, 0.0f);
+}
+
+void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) breakRequested = true;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
@@ -329,3 +348,5 @@ void find_spawn(World& world, Camera& camera) {
 void glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
     std::cerr << "[GL] " << message << std::endl;
 }
+
+
