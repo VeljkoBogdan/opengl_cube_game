@@ -15,9 +15,11 @@
 #include "core/chunkLoader.h"
 #include "core/Raycast.h"
 #include "gl/Texture2D.h"
+#include "gl/Texture2DArray.h"
 #include "rendering/BlockOutline.h"
 #include "rendering/chunkRenderer.h"
 #include "rendering/Crosshair.h"
+#include "util/paths.h"
 #include "util/utils.h"
 #include "util/timer.h"
 
@@ -96,23 +98,31 @@ int main() {
         World world;
         ChunkRenderer chunkRenderer(world);
         ChunkLoader chunkLoader;
-        Texture2D dirt;
+        Texture2DArray blockTextures;
+        blockTextures.load({
+            resourcePath("textures/dirt.png"),
+            resourcePath("textures/grass_side.png"),
+            resourcePath("textures/grass_top.png"),
+            resourcePath("textures/stone.png")
+        }, true);
         Shader shader(
-                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/chunk.vert",
-                "C:/Users/pc/Documents/opengl_projects/opengl_cube_game/resources/shaders/chunk.frag"
+                resourcePath("shaders/chunk.vert").c_str(),
+                resourcePath("shaders/chunk.frag").c_str()
         );
         Shader skyboxShader(
-            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\skybox.vert)",
-            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\skybox.frag)");
+            resourcePath("shaders/skybox.vert").c_str(),
+            resourcePath("shaders/skybox.frag").c_str()
+        );
         chunkRenderer.init();
-        dirt.load(R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\textures\dirt.png)", true);
 
         Crosshair crosshair(
-            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.vert)",
-            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\crosshair.frag)"
+            resourcePath("shaders/crosshair.vert").c_str(),
+            resourcePath("shaders/crosshair.frag").c_str()
         );
-        BlockOutline blockOutline(R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\outline.vert)",
-            R"(C:\Users\pc\Documents\opengl_projects\opengl_cube_game\resources\shaders\outline.frag)");
+        BlockOutline blockOutline(
+            resourcePath("shaders/outline.vert").c_str(),
+            resourcePath("shaders/outline.frag").c_str()
+        );
 
         // time
         float timeOfDay = 0.0f;
@@ -217,7 +227,7 @@ int main() {
 
             // setting uniforms
             shader.use();
-            dirt.bind(0);
+            blockTextures.bind(0);
             shader.setInt("u_texture", 0);
             shader.setMat4("u_view", view);
             shader.setMat4("u_proj", proj);

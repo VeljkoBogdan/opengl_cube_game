@@ -8,8 +8,8 @@ using Noise = OpenSimplexNoise::Noise;
 
 // Block ids
 constexpr int kAir = 0;
-constexpr int kGrass = 1;
-constexpr int kDirt = 2;
+constexpr int kDirt = 1;
+constexpr int kGrass = 2;
 constexpr int kStone = 3;
 
 // Terrain

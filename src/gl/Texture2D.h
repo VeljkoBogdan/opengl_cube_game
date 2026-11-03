@@ -11,7 +11,7 @@ public:
 
     Texture2D(const Texture2D&) = delete;
     Texture2D& operator=(const Texture2D&) = delete;
-    Texture2D(Texture2D&& obj) noexcept : id(obj.id) {}
+    Texture2D(Texture2D&& obj) noexcept : id(obj.id) { obj.id = 0; }
     Texture2D& operator=(Texture2D&& obj) noexcept;
 
     bool load(const std::string& path, bool nearest);

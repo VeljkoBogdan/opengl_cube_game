@@ -13,7 +13,6 @@
 #include "world.h"
 #include "worldGenerator.h"
 #include "../util/IVec3Hash.h"
-#include "../constants.h"
 #include "../rendering/chunkRenderer.h"
 
 struct ChunkLoadJob {
@@ -35,6 +34,13 @@ struct ChunkReadyJob {
     bool remesh = false;
 };
 
+constexpr int BLOCK_LAYERS[][6] {
+    {0,0,0,0,0,0}, // 0 air
+    {0,0,0,0,0,0}, // 1 dirt
+    {1,1,2,0,1,1}, // 2 grass
+    {3,3,3,3,3,3}  // 3 stone
+};
+
 class ChunkLoader {
 public:
     ~ChunkLoader();
@@ -52,9 +58,10 @@ public:
 
 private:
     void workerLoop();
-    void addFace(int face, int x, int y, int z, std::vector<float>& verticesStorage);
-    bool gatherSolid(glm::ivec3 coord, const Chunk* self, uint8_t (&solid)[18][18][18]);
-    void meshFromSolid(const uint8_t (&solid)[18][18][18], std::vector<float>& vertices);
+    void addFace(int face, int x, int y, int z, float layer, std::vector<float> &verticesStorage);
+    bool gatherSolid(glm::ivec3 coord, const Chunk *self, uint16_t (&solid)[18][18][18]);
+    void meshFromSolid(const uint16_t(&solid)[18][18][18], std::vector<float> &vertices);
+    int layerFor(int blockId, int face) const { return BLOCK_LAYERS[blockId][face]; }
 
     // ONE mutex guards everything below,
     // this is only touched a few times per frame, not per-vertex

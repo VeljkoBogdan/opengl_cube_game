@@ -1,13 +1,13 @@
 #include "chunkRenderer.h"
 
 constexpr uint32_t MAX_VERTS = 16'000'000;
-constexpr int FLOATS_PER_VERTEX = 8; // pos(3) normal(3) uv(2)
+constexpr int FLOATS_PER_VERTEX = 9; // pos(3) normal(3) uv(2) layer(1)
 constexpr size_t VERTEX_BYTES = FLOATS_PER_VERTEX * sizeof(float);
 constexpr int CHUNK_SIZE_BLOCKS = 16;
 
 void ChunkRenderer::init() {
     geometry.allocate((size_t)MAX_VERTS * VERTEX_BYTES);
-    vao.addBuffer(geometry, VertexLayout().floats(3).floats(3).floats(2));
+    vao.addBuffer(geometry, VertexLayout().floats(3).floats(3).floats(2).floats(1));
     vao.addBuffer(offsetBuf, VertexLayout().floats(3).perInstance());
 
     arena = VertexArena(MAX_VERTS);

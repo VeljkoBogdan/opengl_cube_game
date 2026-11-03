@@ -6,74 +6,69 @@
 constexpr int chunksUploadedPerFrame = 8;
 constexpr int chunksUnloadedPerFrame = 8;
 
-void ChunkLoader::addFace(int face, int x, int y, int z, std::vector<float>& verticesStorage) {
+void ChunkLoader::addFace(int face, int x, int y, int z, float layer, std::vector<float>& verticesStorage) {
+    constexpr float h = 0.5f;
+
+    // position offset from the block center, normal, uv
+    auto v = [&](float px, float py, float pz, float nx, float ny, float nz, float u, float w) {
+        verticesStorage.insert(verticesStorage.end(), { x + px, y + py, z + pz, nx, ny, nz, u, w, layer });
+    };
+
     switch (face) {
         case DOWN:
-            verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 0.0f,
-                x+0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 0.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 1.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,  1.0f, 1.0f,
-                x-0.5f, y-0.5f, z+0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 1.0f,
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, -1.0f, 0.0f,  0.0f, 0.0f
-            });
+            v(-h, -h, -h,   0, -1, 0,   0, 0);
+            v( h, -h, -h,   0, -1, 0,   1, 0);
+            v( h, -h,  h,   0, -1, 0,   1, 1);
+            v( h, -h,  h,   0, -1, 0,   1, 1);
+            v(-h, -h,  h,   0, -1, 0,   0, 1);
+            v(-h, -h, -h,   0, -1, 0,   0, 0);
             break;
         case UP:
-            verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f,
-                x-0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 1.0f,
-                x+0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-                x+0.5f, y+0.5f, z+0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 1.0f,
-                x+0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  1.0f, 0.0f,
-                x-0.5f, y+0.5f, z-0.5f,  0.0f, 1.0f, 0.0f,  0.0f, 0.0f
-            });
+            v(-h,  h, -h,   0, 1, 0,   0, 0);
+            v(-h,  h,  h,   0, 1, 0,   0, 1);
+            v( h,  h,  h,   0, 1, 0,   1, 1);
+            v( h,  h,  h,   0, 1, 0,   1, 1);
+            v( h,  h, -h,   0, 1, 0,   1, 0);
+            v(-h,  h, -h,   0, 1, 0,   0, 0);
             break;
         case LEFT:
-            verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-                x-0.5f, y-0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-                x-0.5f, y+0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-                x-0.5f, y+0.5f, z-0.5f,  -1.0f, 0.0f, 0.0f,  1.0f, 1.0f,
-                x-0.5f, y-0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-                x-0.5f, y+0.5f, z+0.5f,  -1.0f, 0.0f, 0.0f,  0.0f, 1.0f
-            });
+            v(-h, -h, -h,   -1, 0, 0,   1, 0);
+            v(-h, -h,  h,   -1, 0, 0,   0, 0);
+            v(-h,  h, -h,   -1, 0, 0,   1, 1);
+            v(-h,  h, -h,   -1, 0, 0,   1, 1);
+            v(-h, -h,  h,   -1, 0, 0,   0, 0);
+            v(-h,  h,  h,   -1, 0, 0,   0, 1);
             break;
         case RIGHT:
-            verticesStorage.insert(verticesStorage.end(), {
-                x+0.5f, y+0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-                x+0.5f, y-0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-                x+0.5f, y-0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 0.0f,
-                x+0.5f, y-0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 0.0f,
-                x+0.5f, y+0.5f, z-0.5f,  1.0f, 0.0f, 0.0f,  0.0f, 1.0f,
-                x+0.5f, y+0.5f, z+0.5f,  1.0f, 0.0f, 0.0f,  1.0f, 1.0f
-            });
+            v( h,  h, -h,   1, 0, 0,   0, 1);
+            v( h, -h,  h,   1, 0, 0,   1, 0);
+            v( h, -h, -h,   1, 0, 0,   0, 0);
+            v( h, -h,  h,   1, 0, 0,   1, 0);
+            v( h,  h, -h,   1, 0, 0,   0, 1);
+            v( h,  h,  h,   1, 0, 0,   1, 1);
             break;
         case BACK:
-            verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 0.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-                x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f,
-                x-0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  1.0f, 1.0f,
-                x+0.5f, y-0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 0.0f,
-                x+0.5f, y+0.5f, z+0.5f,  0.0f, 0.0f, 1.0f,  0.0f, 1.0f
-            });
+            v(-h, -h,  h,   0, 0, 1,   1, 0);
+            v( h, -h,  h,   0, 0, 1,   0, 0);
+            v(-h,  h,  h,   0, 0, 1,   1, 1);
+            v(-h,  h,  h,   0, 0, 1,   1, 1);
+            v( h, -h,  h,   0, 0, 1,   0, 0);
+            v( h,  h,  h,   0, 0, 1,   0, 1);
             break;
         case FRONT:
-            verticesStorage.insert(verticesStorage.end(), {
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 0.0f,
-                x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 1.0f,
-                x+0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 0.0f,
-                x-0.5f, y-0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 0.0f,
-                x-0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  0.0f, 1.0f,
-                x+0.5f, y+0.5f, z-0.5f,  0.0f, 0.0f, -1.0f,  1.0f, 1.0f
-            });
+            v(-h, -h, -h,   0, 0, -1,   0, 0);
+            v( h,  h, -h,   0, 0, -1,   1, 1);
+            v( h, -h, -h,   0, 0, -1,   1, 0);
+            v(-h, -h, -h,   0, 0, -1,   0, 0);
+            v(-h,  h, -h,   0, 0, -1,   0, 1);
+            v( h,  h, -h,   0, 0, -1,   1, 1);
             break;
         default:
             break;
     }
 }
 
-bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint8_t(&solid)[18][18][18]) {
+bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint16_t (&solid)[18][18][18]) {
     std::memset(solid, 0, sizeof(solid));
 
     std::lock_guard lock(dataMutex);
@@ -88,7 +83,7 @@ bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint8_t(&soli
     for (int x = 0; x < CHUNK_WIDTH; x++)
         for (int y = 0; y < CHUNK_HEIGHT; y++)
             for (int z = 0; z < CHUNK_LENGTH; z++)
-                solid[x+1][y+1][z+1] = self->blocks[x][y][z] != 0;
+                solid[x+1][y+1][z+1] = self->blocks[x][y][z];
 
     auto getChunk = [&](int dx, int dy, int dz) -> Chunk* {
         auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
@@ -113,18 +108,18 @@ bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint8_t(&soli
     return true;
 }
 
-void ChunkLoader::meshFromSolid(const uint8_t(&solid)[18][18][18], std::vector<float> &vertices) {
+void ChunkLoader::meshFromSolid(const uint16_t(&solid)[18][18][18], std::vector<float> &vertices) {
     for (int x = 0; x < CHUNK_WIDTH; x++)
     for (int y = 0; y < CHUNK_HEIGHT; y++)
     for (int z = 0; z < CHUNK_LENGTH; z++) {
         if (!solid[x+1][y+1][z+1]) continue;
 
-        if (!solid[x+1][y][z+1])   addFace(DOWN,  x, y, z, vertices);
-        if (!solid[x+1][y+2][z+1]) addFace(UP,    x, y, z, vertices);
-        if (!solid[x][y+1][z+1])   addFace(LEFT,  x, y, z, vertices);
-        if (!solid[x+2][y+1][z+1]) addFace(RIGHT, x, y, z, vertices);
-        if (!solid[x+1][y+1][z])   addFace(FRONT, x, y, z, vertices);
-        if (!solid[x+1][y+1][z+2]) addFace(BACK,  x, y, z, vertices);
+        if (!solid[x+1][y][z+1])   addFace(DOWN,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], DOWN), vertices);
+        if (!solid[x+1][y+2][z+1]) addFace(UP,    x, y, z, (float)layerFor(solid[x+1][y+1][z+1], UP), vertices);
+        if (!solid[x][y+1][z+1])   addFace(LEFT,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], LEFT), vertices);
+        if (!solid[x+2][y+1][z+1]) addFace(RIGHT, x, y, z, (float)layerFor(solid[x+1][y+1][z+1], RIGHT), vertices);
+        if (!solid[x+1][y+1][z])   addFace(FRONT, x, y, z, (float)layerFor(solid[x+1][y+1][z+1], FRONT), vertices);
+        if (!solid[x+1][y+1][z+2]) addFace(BACK,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], BACK), vertices);
     }
 }
 
@@ -292,7 +287,7 @@ void ChunkLoader::workerLoop() {
         }
 
         if (isRemesh) {
-            uint8_t solid[18][18][18];
+            uint16_t solid[18][18][18];
             std::vector<float> vertices;
             bool ok = gatherSolid(remeshCoord, nullptr, solid);
             if (ok) meshFromSolid(solid, vertices);
@@ -312,7 +307,7 @@ void ChunkLoader::workerLoop() {
         Chunk chunk;
         generator.generateChunk(chunk, job.coord);
 
-        uint8_t solid[18][18][18];
+        uint16_t solid[18][18][18];
         gatherSolid(job.coord, &chunk, solid);
         std::vector<float> vertices;
         meshFromSolid(solid, vertices);
