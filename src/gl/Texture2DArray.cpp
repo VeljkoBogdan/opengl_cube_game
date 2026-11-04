@@ -30,6 +30,7 @@ bool Texture2DArray::load(const std::vector<std::string>& paths, bool nearest) {
     std::vector<unsigned char*> images(paths.size(), nullptr);
     auto freeAll = [&] { for (auto* p : images) if (p) stbi_image_free(p); };
 
+    stbi_set_flip_vertically_on_load(true);
     for (size_t i = 0; i < paths.size(); ++i) {
         int iw, ih, channels;
         images[i] = stbi_load(paths[i].c_str(), &iw, &ih, &channels, 4);

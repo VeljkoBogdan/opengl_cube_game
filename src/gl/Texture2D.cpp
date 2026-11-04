@@ -18,6 +18,7 @@ Texture2D & Texture2D::operator=(Texture2D &&obj) noexcept {
 
 bool Texture2D::load(const std::string &path, bool nearest) {
     int width, height, channels;
+    stbi_set_flip_vertically_on_load(true);
     unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
     if (!data) {
         std::cerr << "Failed to load texture: " << path << std::endl;
