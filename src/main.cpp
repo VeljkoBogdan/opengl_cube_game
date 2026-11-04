@@ -54,7 +54,6 @@ bool firstRun = true;
 bool breakRequested = false;
 float dayLengthSeconds = 60.0f * 10.0f;
 
-
 int main() {
     {
         glfwInit();
@@ -99,6 +98,7 @@ int main() {
         ChunkRenderer chunkRenderer(world);
         ChunkLoader chunkLoader;
         Texture2DArray blockTextures;
+        VertexArray blankVertexArray;
         blockTextures.load({
             resourcePath("textures/dirt.png"),
             resourcePath("textures/grass_side.png"),
@@ -146,6 +146,13 @@ int main() {
 
         glm::ivec3 lastPlayerChunk = worldToChunkPos(camera.position);
 
+        const float horizonOffset = -0.15f;
+        const float gradientPower = 0.6f;
+        const glm::vec3 nightZenith(0.01f, 0.015f, 0.05f), nightHorizon(0.03f, 0.04f, 0.09f);
+        const glm::vec3 duskZenith (0.18f, 0.25f, 0.50f),  duskHorizon (0.95f, 0.45f, 0.20f);
+        const glm::vec3 dayZenith  (72.f/256.f, 195.f/256.f, 231.f/256.f);
+        const glm::vec3 dayHorizon (64.f/256.f, 160.f/256.f, 200.f/256.f);
+
         // Loop
         while (!glfwWindowShouldClose(window)) {
             // getting delta time
@@ -166,6 +173,18 @@ int main() {
             timeOfDay += deltaTime / dayLengthSeconds;
             float a = timeOfDay * 2.f * glm::pi<float>();
             sunDir = glm::normalize(glm::vec3(std::cos(a), std::sin(a), 0.2f));
+            // sky color computing
+            float h = sunDir.y;
+            float twilightT = glm::smoothstep(-0.25f, 0.0f, h);   // 0 = night, 1 = sun at the horizon
+            float dayT = glm::smoothstep( 0.0f, 0.35f, h);   // 0 = sun at the horizon, 1 = full day
+
+            glm::vec3 zenithColor = mix(glm::mix(nightZenith,  duskZenith,  twilightT), dayZenith,  dayT);
+            glm::vec3 horizonColor = mix(glm::mix(nightHorizon, duskHorizon, twilightT), dayHorizon, dayT);
+            glm::vec3 sunColor = mix(glm::vec3(1.0f, 0.5f, 0.2f), glm::vec3(1.0f, 0.96f, 0.85f), dayT);
+
+            // the sky's color exactly on the horizon line (same formula as the shader at dir.y = 0)
+            float t0 = std::pow(-horizonOffset / (1.0f - horizonOffset), gradientPower);
+            glm::vec3 fogColor = glm::mix(horizonColor, zenithColor, t0);
 
             glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
             if (currentPlayerChunk != lastPlayerChunk || firstRun) {
@@ -216,9 +235,6 @@ int main() {
             // ------
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            glm::vec3 zenithColor = glm::vec3(72.0f/256.0f, 195.0f/256.0f, 231.0f/256.0f);
-            glm::vec3 horizonColor = glm::vec3(238.0f/256.0f, 116.0f/256.0f, 33.0f/256.0f);
-
             // view and projection
             glm::mat4 view, proj;
             view = camera.getViewMatrix();
@@ -231,10 +247,11 @@ int main() {
             shader.setInt("u_texture", 0);
             shader.setMat4("u_view", view);
             shader.setMat4("u_proj", proj);
-            shader.setVec3("u_ambient", glm::vec3(0.2f, 0.2f, 0.2f));
-            shader.setVec3("u_diffuse", glm::vec3(0.75f, 0.75f, 0.7f));
+            shader.setVec3("u_ambient", glm::vec3(0.3f));
             shader.setVec3("u_sunDir", sunDir);
-            shader.setVec3("u_horizonColor", horizonColor);
+            shader.setVec3("u_fogColor", fogColor);
+            shader.setVec3("u_zenithColor", zenithColor);
+            shader.setVec3("u_sunColor", sunColor);
             shader.setVec3("u_camPos", camera.position);
             shader.setVec2("u_fog", glm::vec2((renderDistance / 2.0f * 0.75f) * 16.0f, renderDistance * 8.0f));
 
@@ -252,10 +269,14 @@ int main() {
             glDepthFunc(GL_LEQUAL);
             glDisable(GL_CULL_FACE);
             skyboxShader.use();
+            blankVertexArray.bind();
             skyboxShader.setMat4("u_invViewProj", glm::inverse(proj * glm::mat4(glm::mat3(view)))); // mat3 to delete translation
             skyboxShader.setVec3("u_horizonColor", horizonColor);
             skyboxShader.setVec3("u_zenithColor", zenithColor);
+            skyboxShader.setVec3("u_sunColor", sunColor);
             skyboxShader.setVec3("u_sunDir", sunDir);
+            skyboxShader.setFloat("u_horizonOffset", horizonOffset);
+            skyboxShader.setFloat("u_gradientPower", gradientPower);
             glDrawArrays(GL_TRIANGLES, 0, 3);
             glDepthFunc(GL_LESS);
             glEnable(GL_CULL_FACE);
