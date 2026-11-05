@@ -32,13 +32,13 @@ void World::setBlock(glm::ivec3 worldPos, int blockId) {
     it->second.dirty = true;
 
     const glm::ivec3 size(CHUNK_WIDTH, CHUNK_HEIGHT, CHUNK_LENGTH);
-    for (int axis = 0; axis < 3; axis++) {
-        glm::ivec3 dir(0);
-        if (local[axis] == 0) dir[axis] = -1;
-        else if (local[axis] == size[axis] - 1) dir[axis] = 1;
-        else continue;
-
-        auto neighbor = chunks.find(chunkPos + dir);
+    glm::ivec3 d(0);
+    for (int axis = 0; axis < 3; axis++) d[axis] = local[axis] == 0 ? -1 : (local[axis] == size[axis] - 1 ? 1 : 0);
+    for (int dx : {0, d.x})
+    for (int dy : {0, d.y})
+    for (int dz : {0, d.z}) {
+        if (!dx && !dy && !dz) continue;
+        auto neighbor = chunks.find(chunkPos + glm::ivec3(dx, dy, dz));
         if (neighbor != chunks.end()) neighbor->second.dirty = true;
     }
 }

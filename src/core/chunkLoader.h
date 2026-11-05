@@ -58,7 +58,7 @@ public:
 
 private:
     void workerLoop();
-    void addFace(int face, int x, int y, int z, float layer, std::vector<float> &verticesStorage);
+    void addFace(int face, int x, int y, int z, float layer, const uint16_t (&ids)[18][18][18], std::vector<float>& verticesStorage);
     bool gatherSolid(glm::ivec3 coord, const Chunk *self, uint16_t (&solid)[18][18][18]);
     void meshFromSolid(const uint16_t(&solid)[18][18][18], std::vector<float> &vertices);
     int layerFor(int blockId, int face) const { return BLOCK_LAYERS[blockId][face]; }

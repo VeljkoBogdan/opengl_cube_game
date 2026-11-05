@@ -3,6 +3,7 @@
 in vec3 normal;
 in vec3 fragPos;
 in vec2 texCoord;
+in float ao;
 flat in int layer;
 
 out vec4 fragColor;
@@ -23,7 +24,8 @@ void main() {
     vec3 ambient = mix(u_ambient, u_zenithColor, 0.3) * mix(0.3, 1.0, daylight);
     ambient = max(ambient, vec3(0.05, 0.06, 0.12));
     // final light result
-    vec3 lightResult = ambient + u_sunColor * diff * 0.8;
+    float aoFactor = mix(0.3, 1.0, ao / 3.0);
+    vec3 lightResult = (ambient + u_sunColor * diff * 0.8) * aoFactor;
 
     // fog on distant chunks
     float fog = smoothstep(u_fog.x, u_fog.y, length(fragPos - u_camPos));

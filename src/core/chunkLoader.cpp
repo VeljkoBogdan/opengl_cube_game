@@ -6,65 +6,56 @@
 constexpr int chunksUploadedPerFrame = 8;
 constexpr int chunksUnloadedPerFrame = 8;
 
-void ChunkLoader::addFace(int face, int x, int y, int z, float layer, std::vector<float>& verticesStorage) {
-    constexpr float h = 0.5f;
+struct FaceDef { glm::ivec3 n, t, b; };
 
-    // position offset from the block center, normal, uv
-    auto v = [&](float px, float py, float pz, float nx, float ny, float nz, float u, float w) {
-        verticesStorage.insert(verticesStorage.end(), { x + px, y + py, z + pz, nx, ny, nz, u, w, layer });
-    };
-
+static FaceDef faceDef(int face) {
     switch (face) {
-        case DOWN:
-            v(-h, -h, -h,   0, -1, 0,   0, 0);
-            v( h, -h, -h,   0, -1, 0,   1, 0);
-            v( h, -h,  h,   0, -1, 0,   1, 1);
-            v( h, -h,  h,   0, -1, 0,   1, 1);
-            v(-h, -h,  h,   0, -1, 0,   0, 1);
-            v(-h, -h, -h,   0, -1, 0,   0, 0);
-            break;
-        case UP:
-            v(-h,  h, -h,   0, 1, 0,   0, 0);
-            v(-h,  h,  h,   0, 1, 0,   0, 1);
-            v( h,  h,  h,   0, 1, 0,   1, 1);
-            v( h,  h,  h,   0, 1, 0,   1, 1);
-            v( h,  h, -h,   0, 1, 0,   1, 0);
-            v(-h,  h, -h,   0, 1, 0,   0, 0);
-            break;
-        case LEFT:
-            v(-h, -h, -h,   -1, 0, 0,   1, 0);
-            v(-h, -h,  h,   -1, 0, 0,   0, 0);
-            v(-h,  h, -h,   -1, 0, 0,   1, 1);
-            v(-h,  h, -h,   -1, 0, 0,   1, 1);
-            v(-h, -h,  h,   -1, 0, 0,   0, 0);
-            v(-h,  h,  h,   -1, 0, 0,   0, 1);
-            break;
-        case RIGHT:
-            v( h,  h, -h,   1, 0, 0,   0, 1);
-            v( h, -h,  h,   1, 0, 0,   1, 0);
-            v( h, -h, -h,   1, 0, 0,   0, 0);
-            v( h, -h,  h,   1, 0, 0,   1, 0);
-            v( h,  h, -h,   1, 0, 0,   0, 1);
-            v( h,  h,  h,   1, 0, 0,   1, 1);
-            break;
-        case BACK:
-            v(-h, -h,  h,   0, 0, 1,   1, 0);
-            v( h, -h,  h,   0, 0, 1,   0, 0);
-            v(-h,  h,  h,   0, 0, 1,   1, 1);
-            v(-h,  h,  h,   0, 0, 1,   1, 1);
-            v( h, -h,  h,   0, 0, 1,   0, 0);
-            v( h,  h,  h,   0, 0, 1,   0, 1);
-            break;
-        case FRONT:
-            v(-h, -h, -h,   0, 0, -1,   0, 0);
-            v( h,  h, -h,   0, 0, -1,   1, 1);
-            v( h, -h, -h,   0, 0, -1,   1, 0);
-            v(-h, -h, -h,   0, 0, -1,   0, 0);
-            v(-h,  h, -h,   0, 0, -1,   0, 1);
-            v( h,  h, -h,   0, 0, -1,   1, 1);
-            break;
-        default:
-            break;
+        case DOWN:  return {{ 0,-1, 0}, { 1, 0, 0}, { 0, 0, 1}};
+        case UP:    return {{ 0, 1, 0}, { 1, 0, 0}, { 0, 0,-1}};
+        case LEFT:  return {{-1, 0, 0}, { 0, 0, 1}, { 0, 1, 0}};
+        case RIGHT: return {{ 1, 0, 0}, { 0, 0,-1}, { 0, 1, 0}};
+        case BACK:  return {{ 0, 0, 1}, { 1, 0, 0}, { 0, 1, 0}};
+        case FRONT: return {{ 0, 0,-1}, {-1, 0, 0}, { 0, 1, 0}};
+    }
+    return {};
+}
+
+void ChunkLoader::addFace(int face, int x, int y, int z, float layer,
+                          const uint16_t (&ids)[18][18][18], std::vector<float>& verticesStorage) {
+    constexpr float h = 0.5f;
+    const FaceDef f = faceDef(face);
+
+    const glm::ivec3 front = glm::ivec3(x + 1, y + 1, z + 1) + f.n;
+    auto occ = [&](glm::ivec3 p) { return ids[p.x][p.y][p.z] != 0 ? 1 : 0; };
+
+    static const int su[4] = {-1,  1, 1, -1};
+    static const int sv[4] = {-1, -1, 1,  1};
+    static const float uv[4][2] = {{0, 0}, {1, 0}, {1, 1}, {0, 1}};
+
+    glm::vec3 pos[4];
+    float ao[4];
+    for (int i = 0; i < 4; i++) {
+        glm::ivec3 ts = f.t * su[i], bs = f.b * sv[i];
+        int s1 = occ(front + ts);
+        int s2 = occ(front + bs);
+        int c  = occ(front + ts + bs);
+        ao[i] = (s1 && s2) ? 0.0f : float(3 - (s1 + s2 + c));
+
+        pos[i] = glm::vec3(x, y, z) + glm::vec3(f.n) * h
+               + glm::vec3(f.t) * (su[i] * h) + glm::vec3(f.b) * (sv[i] * h);
+    }
+
+    static const int tris[2][6] = {{0, 1, 2, 0, 2, 3}, {1, 2, 3, 1, 3, 0}};
+    const int* order = (ao[0] + ao[2] > ao[1] + ao[3]) ? tris[0] : tris[1];
+
+    for (int k = 0; k < 6; k++) {
+        int i = order[k];
+        verticesStorage.insert(verticesStorage.end(), {
+            pos[i].x, pos[i].y, pos[i].z,
+            (float)f.n.x, (float)f.n.y, (float)f.n.z,
+            uv[i][0], uv[i][1],
+            layer, ao[i]
+        });
     }
 }
 
@@ -85,26 +76,25 @@ bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint16_t (&so
             for (int z = 0; z < CHUNK_LENGTH; z++)
                 solid[x+1][y+1][z+1] = self->blocks[x][y][z];
 
-    auto getChunk = [&](int dx, int dy, int dz) -> Chunk* {
-        auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
-        return it == chunks.end() ? nullptr : &it->second;
-    };
-    Chunk* nx = getChunk(-1, 0, 0);
-    Chunk* px = getChunk(1, 0, 0);
-    Chunk* ny = getChunk(0, -1, 0);
-    Chunk* py = getChunk(0, 1, 0);
-    Chunk* nz = getChunk(0, 0, -1);
-    Chunk* pz = getChunk(0, 0, 1);
+    Chunk* nb[3][3][3] = {};
+    for (int dx = -1; dx <= 1; dx++)
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dz = -1; dz <= 1; dz++) {
+                if (!dx && !dy && !dz) continue;
+                auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
+                if (it != chunks.end()) nb[dx+1][dy+1][dz+1] = &it->second;
+            }
 
-    for (int a = 0; a < 16; a++)
-        for (int b = 0; b < 16; b++) {
-            if (nx) solid[0][a+1][b+1]  = nx->blocks[15][a][b] != 0;
-            if (px) solid[17][a+1][b+1] = px->blocks[0][a][b]  != 0;
-            if (ny) solid[a+1][0][b+1]  = ny->blocks[a][15][b] != 0;
-            if (py) solid[a+1][17][b+1] = py->blocks[a][0][b]  != 0;
-            if (nz) solid[a+1][b+1][0]  = nz->blocks[a][b][15] != 0;
-            if (pz) solid[a+1][b+1][17] = pz->blocks[a][b][0]  != 0;
-        }
+    for (int px = 0; px < 18; px++)
+        for (int py = 0; py < 18; py++)
+            for (int pz = 0; pz < 18; pz++) {
+                int dx = px == 0 ? -1 : (px == 17 ? 1 : 0);
+                int dy = py == 0 ? -1 : (py == 17 ? 1 : 0);
+                int dz = pz == 0 ? -1 : (pz == 17 ? 1 : 0);
+                if (!dx && !dy && !dz) continue;
+                Chunk* c = nb[dx+1][dy+1][dz+1];
+                if (c) solid[px][py][pz] = c->blocks[(px + 15) % 16][(py + 15) % 16][(pz + 15) % 16];
+            }
     return true;
 }
 
@@ -114,15 +104,14 @@ void ChunkLoader::meshFromSolid(const uint16_t(&solid)[18][18][18], std::vector<
     for (int z = 0; z < CHUNK_LENGTH; z++) {
         if (!solid[x+1][y+1][z+1]) continue;
 
-        if (!solid[x+1][y][z+1])   addFace(DOWN,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], DOWN), vertices);
-        if (!solid[x+1][y+2][z+1]) addFace(UP,    x, y, z, (float)layerFor(solid[x+1][y+1][z+1], UP), vertices);
-        if (!solid[x][y+1][z+1])   addFace(LEFT,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], LEFT), vertices);
-        if (!solid[x+2][y+1][z+1]) addFace(RIGHT, x, y, z, (float)layerFor(solid[x+1][y+1][z+1], RIGHT), vertices);
-        if (!solid[x+1][y+1][z])   addFace(FRONT, x, y, z, (float)layerFor(solid[x+1][y+1][z+1], FRONT), vertices);
-        if (!solid[x+1][y+1][z+2]) addFace(BACK,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], BACK), vertices);
+        if (!solid[x+1][y][z+1])   addFace(DOWN,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], DOWN), solid, vertices);
+        if (!solid[x+1][y+2][z+1]) addFace(UP,    x, y, z, (float)layerFor(solid[x+1][y+1][z+1], UP), solid, vertices);
+        if (!solid[x][y+1][z+1])   addFace(LEFT,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], LEFT), solid, vertices);
+        if (!solid[x+2][y+1][z+1]) addFace(RIGHT, x, y, z, (float)layerFor(solid[x+1][y+1][z+1], RIGHT), solid, vertices);
+        if (!solid[x+1][y+1][z])   addFace(FRONT, x, y, z, (float)layerFor(solid[x+1][y+1][z+1], FRONT), solid, vertices);
+        if (!solid[x+1][y+1][z+2]) addFace(BACK,  x, y, z, (float)layerFor(solid[x+1][y+1][z+1], BACK), solid, vertices);
     }
 }
-
 
 ChunkLoader::~ChunkLoader() {
     stop();
@@ -178,10 +167,6 @@ void ChunkLoader::queueDirty(World &world) {
     }
 }
 
-static const glm::ivec3 neighborDirs[6] = {
-    {-1, 0, 0}, {1, 0, 0}, {0, -1, 0}, {0, 1, 0}, {0, 0, -1}, {0, 0, 1}
-};
-
 void ChunkLoader::processReady(World& world, ChunkRenderer& chunkRenderer) {
     std::vector<ChunkReadyJob> batch;
     {
@@ -224,10 +209,13 @@ void ChunkLoader::processReady(World& world, ChunkRenderer& chunkRenderer) {
             pending.erase(job.coord);
         }
 
-        for (const glm::ivec3& d : neighborDirs) {
-            auto it = chunks.find(job.coord + d);
-            if (it != chunks.end() && it->second.vertexCount > 0) it->second.dirty = true;
-        }
+        for (int dx = -1; dx <= 1; dx++)
+            for (int dy = -1; dy <= 1; dy++)
+                for (int dz = -1; dz <= 1; dz++) {
+                    if (!dx && !dy && !dz) continue;
+                    auto it = chunks.find(job.coord + glm::ivec3(dx, dy, dz));
+                    if (it != chunks.end() && it->second.vertexCount > 0) it->second.dirty = true;
+                }
     }
 }
 

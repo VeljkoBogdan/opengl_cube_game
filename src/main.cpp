@@ -98,7 +98,7 @@ int main() {
         ChunkRenderer chunkRenderer(world);
         ChunkLoader chunkLoader;
         Texture2DArray blockTextures;
-        VertexArray blankVertexArray;
+        VertexArray blankVertexArray; // blank array for skybox
         blockTextures.load({
             resourcePath("textures/dirt.png"),
             resourcePath("textures/grass_side.png"),
