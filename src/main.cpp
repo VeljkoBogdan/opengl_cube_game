@@ -14,6 +14,7 @@
 #include "core/worldGenerator.h"
 #include "core/chunkLoader.h"
 #include "core/Raycast.h"
+#include "gl/Framebuffer.h"
 #include "gl/Texture2D.h"
 #include "gl/Texture2DArray.h"
 #include "rendering/BlockOutline.h"
@@ -94,6 +95,8 @@ int main() {
             0, nullptr, GL_FALSE);
 #endif
 
+        Framebuffer sceneFbo;
+        VertexArray fbVao; // empty array for framebuffer
         World world;
         ChunkRenderer chunkRenderer(world);
         ChunkLoader chunkLoader;
@@ -101,8 +104,8 @@ int main() {
         VertexArray blankVertexArray; // blank array for skybox
         blockTextures.load({
             resourcePath("textures/dirt.png"),
-            resourcePath("textures/grass_side.png"),
-            resourcePath("textures/grass_top.png"),
+            resourcePath("textures/grass_block_side.png"),
+            resourcePath("textures/grass_block_top.png"),
             resourcePath("textures/stone.png")
         }, true);
         Shader shader(
@@ -113,6 +116,10 @@ int main() {
             resourcePath("shaders/skybox.vert").c_str(),
             resourcePath("shaders/skybox.frag").c_str()
         );
+        Shader fxaaShader(
+            resourcePath("shaders/fxaa.vert").c_str(),
+            resourcePath("shaders/fxaa.frag").c_str()
+            );
         chunkRenderer.init();
 
         Crosshair crosshair(
@@ -233,6 +240,10 @@ int main() {
 
             // render
             // ------
+            int fbW, fbH;
+            glfwGetFramebufferSize(window, &fbW, &fbH);
+            sceneFbo.resize(fbW, fbH);
+            sceneFbo.bind();
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
             // view and projection
@@ -281,11 +292,28 @@ int main() {
             glDepthFunc(GL_LESS);
             glEnable(GL_CULL_FACE);
 
-            // crosshair render
-            int framebufferWidth, framebufferHeight;
-            glfwGetFramebufferSize(window, &framebufferWidth, &framebufferHeight);
-            framebuffer_size_callback(window, framebufferWidth, framebufferHeight);
-            crosshair.draw(framebufferWidth, framebufferHeight);
+            // framebuffer stuff
+            Framebuffer::bindDefault(fbW, fbH);
+            glDisable(GL_CULL_FACE);
+            glDisable(GL_DEPTH_TEST);
+
+            // fxaa
+            fxaaShader.use();
+            sceneFbo.bindColorTexture(0);
+            fxaaShader.setInt("u_scene", 0);
+            fxaaShader.setVec2("u_texelSize", glm::vec2(1.0f / fbW, 1.0f / fbH));
+            fbVao.bind();
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            //
+
+            glEnable(GL_DEPTH_TEST);
+            glEnable(GL_CULL_FACE);
+            // frambuffer end
+
+            // crosshair
+            framebuffer_size_callback(window, fbW, fbH);
+            crosshair.draw(fbW, fbH);
 
             // glfw: swap buffers and poll IO events (keys pressed/released, mouse moved etc.)
             // -------------------------------------------------------------------------------

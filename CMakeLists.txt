@@ -32,6 +32,7 @@ set(SOURCES
         src/gl/Texture2DArray.cpp
         src/gl/Texture2DArray.h
         src/util/paths.h
+        src/gl/Framebuffer.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
