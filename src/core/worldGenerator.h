@@ -1,10 +1,18 @@
 #ifndef WORLDGENERATOR_H
 #define WORLDGENERATOR_H
 
-#include "chunk.h"
-#include "glm/glm.hpp"
-#include "../util/OpenSimplexNoise.h"
 #include <memory>
+#include <glm/vec3.hpp>
+
+#include "chunk.h"
+#include "FastNoise/FastNoise.h"
+
+struct NoiseSet {
+    FastNoise::SmartNode<> ground;
+    FastNoise::SmartNode<> shape;
+    FastNoise::SmartNode<> raw;
+    int seed = 0;
+};
 
 class WorldGenerator {
 public:
@@ -13,7 +21,7 @@ public:
     void generateChunk(Chunk& chunk, glm::ivec3 coords) const;
 
 private:
-    std::unique_ptr<OpenSimplexNoise::Noise> noise;
+    std::unique_ptr<NoiseSet> noise;
 
     float getDensity(int worldX, int worldY, int worldZ);
     bool isSolid(int worldX, int worldY, int worldZ);
