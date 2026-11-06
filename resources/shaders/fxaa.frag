@@ -5,6 +5,7 @@ out vec4 fragColor;
 
 uniform sampler2D u_scene;
 uniform vec2 u_texelSize;
+uniform bool u_enabled;
 
 #define FXAA_REDUCE_MIN (1.0 / 256.0)
 #define FXAA_REDUCE_MUL (1.0 / 4.0)
@@ -15,6 +16,11 @@ float luma(vec3 c) {
 }
 
 void main() {
+    if (!u_enabled) {
+        fragColor = texture(u_scene, uv);
+        return;
+    }
+
     vec3 rgbNW = texture(u_scene, uv + vec2(-1.0, -1.0) * u_texelSize).rgb;
     vec3 rgbNE = texture(u_scene, uv + vec2(1.0, -1.0) * u_texelSize).rgb;
     vec3 rgbSW = texture(u_scene, uv + vec2(-1.0, 1.0) * u_texelSize).rgb;

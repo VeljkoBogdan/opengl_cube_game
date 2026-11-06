@@ -30,6 +30,7 @@ void processInput(GLFWwindow *window);
 void mouse_callback(GLFWwindow* window, double xPos, double yPos);
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset);
 void find_spawn(World& world, Camera& camera);
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods);
 void APIENTRY glDebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
     GLsizei length, const GLchar* message, const void* userParam);
 
@@ -54,6 +55,7 @@ int renderDistance = 8;
 bool firstRun = true;
 bool breakRequested = false;
 bool placeRequested = false;
+bool fxaaEnabled = true;
 float dayLengthSeconds = 60.0f * 10.0f;
 
 int main() {
@@ -82,6 +84,7 @@ int main() {
         glfwSetCursorPosCallback(window, mouse_callback);
         glfwSetScrollCallback(window, scroll_callback);
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+        glfwSetKeyCallback(window, key_callback);
 
         if (!gladLoadGL(glfwGetProcAddress)) {
             std::cout << "Failed to initialize GLAD" << std::endl;
@@ -315,6 +318,7 @@ int main() {
             sceneFbo.bindColorTexture(0);
             fxaaShader.setInt("u_scene", 0);
             fxaaShader.setVec2("u_texelSize", glm::vec2(1.0f / fbW, 1.0f / fbH));
+            fxaaShader.setBool("u_enabled", fxaaEnabled);
             fbVao.bind();
             glDrawArrays(GL_TRIANGLES, 0, 3);
 
@@ -353,6 +357,13 @@ void processInput(GLFWwindow *window) {
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) camera.position += speed * deltaTime * glm::vec3(0.0f, 1.0f, 0.0f);
     if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) camera.position -= speed * deltaTime * glm::vec3(0.0f, 1.0f, 0.0f);
+}
+
+void key_callback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_P && action == GLFW_PRESS) {
+        fxaaEnabled = !fxaaEnabled;
+        std::printf("\nFxaa: %d", fxaaEnabled);
+    }
 }
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
