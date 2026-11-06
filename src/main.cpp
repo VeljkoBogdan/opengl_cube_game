@@ -13,6 +13,7 @@
 #include "core/world.h"
 #include "core/worldGenerator.h"
 #include "core/chunkLoader.h"
+#include "core/Player.h"
 #include "core/Raycast.h"
 #include "gl/Framebuffer.h"
 #include "gl/Texture2D.h"
@@ -38,20 +39,8 @@ float deltaTime = 0.0f;
 float lastTime = 0.0f;
 int nbFrames = 0;
 
-// mouse
-bool firstMouse = true; // used for smoothing the first mouse movement
-float lastMouseX = 400.0f;
-float lastMouseY = 300.0f;
-float mouseSensitivity = 0.1f;
-float yaw = -90.0f;
-float pitch = 0.0f;
-
-// camera
-Camera camera;
-float speed = 32.0f;
-int renderDistance = 8;
-
 // world
+Player player;
 bool firstRun = true;
 bool breakRequested = false;
 bool placeRequested = false;
@@ -154,10 +143,10 @@ int main() {
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
         // GAME ------------------------
-        find_spawn(world, camera);
+        find_spawn(world, player.getCamera());
 
         chunkLoader.start(world);
-        glm::ivec3 lastPlayerChunk = worldToChunkPos(camera.position);
+        glm::ivec3 lastPlayerChunk = worldToChunkPos(player.getCamera().position);
 
         const float horizonOffset = -0.15f;
         const float gradientPower = 0.6f;
@@ -185,29 +174,29 @@ int main() {
             // time
             timeOfDay += deltaTime / dayLengthSeconds;
             float a = timeOfDay * 2.f * glm::pi<float>();
-            sunDir = glm::normalize(glm::vec3(std::cos(a), std::sin(a), 0.2f));
+            sunDir = normalize(glm::vec3(std::cos(a), std::sin(a), 0.2f));
             // sky color computing
             float h = sunDir.y;
             float twilightT = glm::smoothstep(-0.25f, 0.0f, h);   // 0 = night, 1 = sun at the horizon
             float dayT = glm::smoothstep( 0.0f, 0.35f, h);   // 0 = sun at the horizon, 1 = full day
-            glm::vec3 zenithColor = mix(glm::mix(nightZenith,  duskZenith,  twilightT), dayZenith,  dayT);
-            glm::vec3 horizonColor = mix(glm::mix(nightHorizon, duskHorizon, twilightT), dayHorizon, dayT);
+            glm::vec3 zenithColor = mix(mix(nightZenith,  duskZenith,  twilightT), dayZenith,  dayT);
+            glm::vec3 horizonColor = mix(mix(nightHorizon, duskHorizon, twilightT), dayHorizon, dayT);
             glm::vec3 sunColor = mix(glm::vec3(1.0f, 0.5f, 0.2f), glm::vec3(1.0f, 0.96f, 0.85f), dayT);
             // the sky's color exactly on the horizon line
             float t0 = std::pow(-horizonOffset / (1.0f - horizonOffset), gradientPower);
-            glm::vec3 fogColor = glm::mix(horizonColor, zenithColor, t0);
+            glm::vec3 fogColor = mix(horizonColor, zenithColor, t0);
 
             // chunk loading and unloading
-            glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
+            glm::ivec3 currentPlayerChunk = worldToChunkPos(player.getCamera().position);
             if (currentPlayerChunk != lastPlayerChunk || firstRun) {
                 chunkLoader.setPlayerChunk(currentPlayerChunk);
 
                 // unloading distant chunks
-                auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, renderDistance);
+                auto chunksToUnload = world.getChunksToUnload(currentPlayerChunk, player.getRenderDistance());
                 chunkLoader.requestUnload(chunksToUnload);
 
                 // requesting chunks
-                int half = renderDistance / 2;
+                int half = player.getRenderDistance() / 2;
                 int vertHalf = half / 2;
                 for (int x = -half; x < half; x++)
                     for (int y = -vertHalf; y < vertHalf; y++)
@@ -224,7 +213,7 @@ int main() {
             float reach = 6.0f;
             std::optional<glm::ivec3> target;
             glm::vec3 hitNormal = glm::vec3(0);
-            Raycast ray(camera.position, camera.position + camera.target * reach);
+            Raycast ray(player.getCamera().position, player.getCamera().position + player.getCamera().target * reach);
             while (auto p = ray.getNextTargetPos()) {
                 if (world.getBlock(*p) != 0) {
                     hitNormal = ray.getNormal();
@@ -254,6 +243,8 @@ int main() {
             // -----
             processInput(window);
 
+            player.update(deltaTime);
+
             // render
             // ------
             // framebuffer stuff
@@ -265,10 +256,8 @@ int main() {
 
             // view and projection
             glm::mat4 view, proj;
-            view = camera.getViewMatrix();
-            proj = camera.getProjectionMatrix();
-            // camera frustum
-            camera.updateFrustum();
+            view = player.getCamera().getViewMatrix();
+            proj = player.getCamera().getProjectionMatrix();
 
             // chunk shader
             shader.use();
@@ -281,14 +270,14 @@ int main() {
             shader.setVec3("u_fogColor", fogColor);
             shader.setVec3("u_zenithColor", zenithColor);
             shader.setVec3("u_sunColor", sunColor);
-            shader.setVec3("u_camPos", camera.position);
-            shader.setVec2("u_fog", glm::vec2((renderDistance / 2.0f * 0.75f) * 16.0f, renderDistance * 8.0f));
+            shader.setVec3("u_camPos", player.getCamera().position);
+            shader.setVec2("u_fog", glm::vec2((player.getRenderDistance() / 2.0f * 0.75f) * 16.0f, player.getRenderDistance() * 8.0f));
             // chunk remeshing, unloading and uploading
             chunkLoader.queueDirty(world);
             chunkLoader.processUnload(world, chunkRenderer);
             chunkLoader.processReady(world, chunkRenderer);
             // chunk render
-            chunkRenderer.drawAll(shader, camera);
+            chunkRenderer.drawAll(shader, player.getCamera());
 
             // outline render
             if (target) blockOutline.draw(*target, view, proj, fbW, fbH);
@@ -298,7 +287,7 @@ int main() {
             glDisable(GL_CULL_FACE);
             skyboxShader.use();
             blankVertexArray.bind();
-            skyboxShader.setMat4("u_invViewProj", glm::inverse(proj * glm::mat4(glm::mat3(view)))); // mat3 to delete translation
+            skyboxShader.setMat4("u_invViewProj", inverse(proj * glm::mat4(glm::mat3(view)))); // mat3 to delete translation
             skyboxShader.setVec3("u_horizonColor", horizonColor);
             skyboxShader.setVec3("u_zenithColor", zenithColor);
             skyboxShader.setVec3("u_sunColor", sunColor);
@@ -351,8 +340,10 @@ int main() {
 void processInput(GLFWwindow *window) {
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) glfwSetWindowShouldClose(window, true);
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.position += speed * deltaTime * glm::normalize(glm::vec3(camera.target.x, 0.0f, camera.target.z));
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.position -= speed * deltaTime * glm::normalize(glm::vec3(camera.target.x, 0.0f, camera.target.z));
+    Camera& camera = player.getCamera();
+    const float speed = player.getSpeed();
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) camera.position += speed * deltaTime * normalize(glm::vec3(camera.target.x, 0.0f, camera.target.z));
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) camera.position -= speed * deltaTime * normalize(glm::vec3(camera.target.x, 0.0f, camera.target.z));
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) camera.position -= speed * deltaTime * camera.right;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) camera.position += speed * deltaTime * camera.right;
 
@@ -378,33 +369,11 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {
     if (width == 0 || height == 0) return;
     glViewport(0, 0, width, height);
-    camera.aspect = (float)width / (float)height;
+    player.getCamera().aspect = (float)width / (float)height;
 }
 
 void mouse_callback(GLFWwindow* window, double xPos, double yPos) {
-    if (firstMouse) {
-        lastMouseX = xPos;
-        lastMouseY = yPos;
-        firstMouse = false;
-    }
-
-    float x = (xPos - lastMouseX) * mouseSensitivity;
-    float y = (lastMouseY - yPos) * mouseSensitivity;
-    lastMouseX = xPos;
-    lastMouseY = yPos;
-
-    yaw += x;
-    pitch += y;
-
-    if (pitch > 89.9f) pitch = 89.9f;
-    if (pitch < -89.9f) pitch = -89.9f;
-
-    camera.target.x = cos(glm::radians(pitch)) * cos(glm::radians(yaw));
-    camera.target.y = sin(glm::radians(pitch));
-    camera.target.z = cos(glm::radians(pitch)) * sin(glm::radians(yaw));
-    camera.target = glm::normalize(camera.target);
-    camera.right = glm::normalize(glm::cross(camera.target, glm::vec3(0.0f, 1.0f, 0.0f)));
-    camera.up = glm::normalize(glm::cross(camera.right, camera.target));
+    player.mouseCallback(xPos, yPos);
 }
 
 void scroll_callback(GLFWwindow* window, double xOffset, double yOffset) {
