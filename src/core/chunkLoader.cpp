@@ -117,15 +117,28 @@ ChunkLoader::~ChunkLoader() {
     stop();
 }
 
-void ChunkLoader::start(World& world) {
-    running = true;
-    worker = std::thread(&ChunkLoader::workerLoop, this);
+void ChunkLoader::start(World& world, unsigned int threadCount) {
     this->world = &world;
+    if (threadCount == 0) { // auto
+        unsigned int hw = std::thread::hardware_concurrency();
+        threadCount = hw > 3 ? hw - 2 : 1;
+    }
+    running = true;
+    for (unsigned int i = 0; i < threadCount; i++) {
+        workers.emplace_back(&ChunkLoader::workerLoop, this);
+    }
+
+    std::printf("Started ChunkLoader with thread count: %u", threadCount);
 }
 
 void ChunkLoader::stop() {
-    running = false;
-    if (worker.joinable()) worker.join();
+    {
+        std::lock_guard lock(dataMutex);
+        running = false;
+    }
+    wake.notify_all();
+    for (auto& t : workers) if (t.joinable()) t.join();
+    workers.clear();
 }
 
 void ChunkLoader::setPlayerChunk(glm::ivec3 coord) {
@@ -144,6 +157,8 @@ void ChunkLoader::requestChunk(glm::ivec3 coord) {
     glm::ivec3 diff = coord - playerChunk;
     float priority = (float)(diff.x*diff.x + diff.y*diff.y + diff.z*diff.z);
     toLoad.push({coord, priority});
+
+    wake.notify_one();
 }
 
 void ChunkLoader::requestUnload(const std::vector<glm::ivec3>& coords) {
@@ -164,6 +179,8 @@ void ChunkLoader::queueDirty(World &world) {
         chunk.dirty = false;
         remeshPending.insert(coord);
         toRemesh.push(coord);
+
+        wake.notify_one();
     }
 }
 
@@ -248,30 +265,26 @@ void ChunkLoader::processUnload(World& world, ChunkRenderer& chunkRenderer) {
 }
 
 void ChunkLoader::workerLoop() {
-    while (running) {
+    while (true) {
         ChunkLoadJob job;
         glm::ivec3 remeshCoord{0};
-        bool hasJob = false;
         bool isRemesh = false;
         bool cancelled = false;
 
         {
-            std::lock_guard lock(dataMutex);
+            std::unique_lock lock(dataMutex);
+            wake.wait(lock, [&] { return !running || !toRemesh.empty() || !toLoad.empty(); });
+            if (!running) return;
+
             if (!toRemesh.empty()) {
                 remeshCoord = toRemesh.front();
                 toRemesh.pop();
-                hasJob = isRemesh = true;
-            } else if (!toLoad.empty()) {
+                isRemesh = true;
+            } else {
                 job = toLoad.top();
                 toLoad.pop();
-                hasJob = true;
                 cancelled = pendingUnload.count(job.coord) > 0;
             }
-        }
-
-        if (!hasJob) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            continue;
         }
 
         if (isRemesh) {

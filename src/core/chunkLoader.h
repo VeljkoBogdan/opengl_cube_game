@@ -4,6 +4,7 @@
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <condition_variable>
 #include <queue>
 #include <vector>
 #include <unordered_set>
@@ -45,7 +46,7 @@ class ChunkLoader {
 public:
     ~ChunkLoader();
 
-    void start(World& world);
+    void start(World& world, unsigned int threadCount = 0); // 0 = auto
     void stop();
 
     void setPlayerChunk(glm::ivec3 coord);
@@ -77,7 +78,8 @@ private:
     std::unordered_set<glm::ivec3, IVec3Hash> pendingUnload;
     std::queue<glm::ivec3> toUnloadQueue;
 
-    std::thread worker;
+    std::vector<std::thread> workers;
+    std::condition_variable wake;
     std::atomic<bool> running{false};
 
     WorldGenerator generator;

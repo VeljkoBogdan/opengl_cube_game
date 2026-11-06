@@ -48,7 +48,7 @@ float pitch = 0.0f;
 // camera
 Camera camera;
 float speed = 32.0f;
-int renderDistance = 32;
+int renderDistance = 8;
 
 // world
 bool firstRun = true;
@@ -172,7 +172,7 @@ int main() {
             double currentFPSTime = glfwGetTime();
             nbFrames++;
             if (currentFPSTime - lastFPSTime >= 1.0) {
-                printf("%f ms/frame\n", 1000.0/double(nbFrames));
+                // printf("%f ms/frame\n", 1000.0/double(nbFrames));
                 nbFrames = 0;
                 lastFPSTime = currentFPSTime;
             }
