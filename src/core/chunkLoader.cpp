@@ -78,23 +78,23 @@ bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint16_t (&so
 
     Chunk* nb[3][3][3] = {};
     for (int dx = -1; dx <= 1; dx++)
-        for (int dy = -1; dy <= 1; dy++)
-            for (int dz = -1; dz <= 1; dz++) {
-                if (!dx && !dy && !dz) continue;
-                auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
-                if (it != chunks.end()) nb[dx+1][dy+1][dz+1] = &it->second;
-            }
+    for (int dy = -1; dy <= 1; dy++)
+    for (int dz = -1; dz <= 1; dz++) {
+        if (!dx && !dy && !dz) continue;
+        auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
+        if (it != chunks.end()) nb[dx+1][dy+1][dz+1] = &it->second;
+    }
 
     for (int px = 0; px < 18; px++)
-        for (int py = 0; py < 18; py++)
-            for (int pz = 0; pz < 18; pz++) {
-                int dx = px == 0 ? -1 : (px == 17 ? 1 : 0);
-                int dy = py == 0 ? -1 : (py == 17 ? 1 : 0);
-                int dz = pz == 0 ? -1 : (pz == 17 ? 1 : 0);
-                if (!dx && !dy && !dz) continue;
-                Chunk* c = nb[dx+1][dy+1][dz+1];
-                if (c) solid[px][py][pz] = c->blocks[(px + 15) % 16][(py + 15) % 16][(pz + 15) % 16];
-            }
+    for (int py = 0; py < 18; py++)
+    for (int pz = 0; pz < 18; pz++) {
+        int dx = px == 0 ? -1 : (px == 17 ? 1 : 0);
+        int dy = py == 0 ? -1 : (py == 17 ? 1 : 0);
+        int dz = pz == 0 ? -1 : (pz == 17 ? 1 : 0);
+        if (!dx && !dy && !dz) continue;
+        Chunk* c = nb[dx+1][dy+1][dz+1];
+        if (c) solid[px][py][pz] = c->blocks[(px + 15) % 16][(py + 15) % 16][(pz + 15) % 16];
+    }
     return true;
 }
 

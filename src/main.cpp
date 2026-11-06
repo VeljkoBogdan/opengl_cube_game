@@ -86,10 +86,7 @@ int main() {
         glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
         glfwSetKeyCallback(window, key_callback);
 
-        if (!gladLoadGL(glfwGetProcAddress)) {
-            std::cout << "Failed to initialize GLAD" << std::endl;
-            return -1;
-        }
+        if (!gladLoadGL(glfwGetProcAddress)) { std::cout << "Failed to initialize GLAD" << std::endl; return -1;}
 
 #ifndef NDEBUG
         glEnable(GL_DEBUG_OUTPUT);
@@ -99,19 +96,23 @@ int main() {
             0, nullptr, GL_FALSE);
 #endif
 
+        // rendering
         Framebuffer sceneFbo;
-        VertexArray fbVao; // empty array for framebuffer
-        World world;
-        ChunkRenderer chunkRenderer(world);
-        ChunkLoader chunkLoader;
+        VertexArray blankVertexArray; // blank array for skybox and framebuffer
         Texture2DArray blockTextures;
-        VertexArray blankVertexArray; // blank array for skybox
         blockTextures.load({
             resourcePath("textures/dirt.png"),
             resourcePath("textures/grass_block_side.png"),
             resourcePath("textures/grass_block_top.png"),
             resourcePath("textures/stone.png")
         }, true);
+
+        // world
+        World world;
+        ChunkRenderer chunkRenderer(world);
+        ChunkLoader chunkLoader;
+
+        // shaders
         Shader shader(
                 resourcePath("shaders/chunk.vert").c_str(),
                 resourcePath("shaders/chunk.frag").c_str()
@@ -126,6 +127,7 @@ int main() {
             );
         chunkRenderer.init();
 
+        // additional classes with shaders
         Crosshair crosshair(
             resourcePath("shaders/crosshair.vert").c_str(),
             resourcePath("shaders/crosshair.frag").c_str()
@@ -138,16 +140,16 @@ int main() {
 
         // time
         float timeOfDay = 0.0f;
+
+        // sun
         glm::vec3 sunDir;
 
         // fps
         double lastFPSTime = glfwGetTime();
-
         // enabling depth testing and back-face culling
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
-
         // locking mouse
         glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
@@ -155,7 +157,6 @@ int main() {
         find_spawn(world, camera);
 
         chunkLoader.start(world);
-
         glm::ivec3 lastPlayerChunk = worldToChunkPos(camera.position);
 
         const float horizonOffset = -0.15f;
@@ -189,15 +190,14 @@ int main() {
             float h = sunDir.y;
             float twilightT = glm::smoothstep(-0.25f, 0.0f, h);   // 0 = night, 1 = sun at the horizon
             float dayT = glm::smoothstep( 0.0f, 0.35f, h);   // 0 = sun at the horizon, 1 = full day
-
             glm::vec3 zenithColor = mix(glm::mix(nightZenith,  duskZenith,  twilightT), dayZenith,  dayT);
             glm::vec3 horizonColor = mix(glm::mix(nightHorizon, duskHorizon, twilightT), dayHorizon, dayT);
             glm::vec3 sunColor = mix(glm::vec3(1.0f, 0.5f, 0.2f), glm::vec3(1.0f, 0.96f, 0.85f), dayT);
-
-            // the sky's color exactly on the horizon line (same formula as the shader at dir.y = 0)
+            // the sky's color exactly on the horizon line
             float t0 = std::pow(-horizonOffset / (1.0f - horizonOffset), gradientPower);
             glm::vec3 fogColor = glm::mix(horizonColor, zenithColor, t0);
 
+            // chunk loading and unloading
             glm::ivec3 currentPlayerChunk = worldToChunkPos(camera.position);
             if (currentPlayerChunk != lastPlayerChunk || firstRun) {
                 chunkLoader.setPlayerChunk(currentPlayerChunk);
@@ -256,6 +256,7 @@ int main() {
 
             // render
             // ------
+            // framebuffer stuff
             int fbW, fbH;
             glfwGetFramebufferSize(window, &fbW, &fbH);
             sceneFbo.resize(fbW, fbH);
@@ -266,9 +267,10 @@ int main() {
             glm::mat4 view, proj;
             view = camera.getViewMatrix();
             proj = camera.getProjectionMatrix();
+            // camera frustum
             camera.updateFrustum();
 
-            // setting uniforms
+            // chunk shader
             shader.use();
             blockTextures.bind(0);
             shader.setInt("u_texture", 0);
@@ -281,11 +283,10 @@ int main() {
             shader.setVec3("u_sunColor", sunColor);
             shader.setVec3("u_camPos", camera.position);
             shader.setVec2("u_fog", glm::vec2((renderDistance / 2.0f * 0.75f) * 16.0f, renderDistance * 8.0f));
-
+            // chunk remeshing, unloading and uploading
             chunkLoader.queueDirty(world);
             chunkLoader.processUnload(world, chunkRenderer);
             chunkLoader.processReady(world, chunkRenderer);
-
             // chunk render
             chunkRenderer.drawAll(shader, camera);
 
@@ -319,7 +320,7 @@ int main() {
             fxaaShader.setInt("u_scene", 0);
             fxaaShader.setVec2("u_texelSize", glm::vec2(1.0f / fbW, 1.0f / fbH));
             fxaaShader.setBool("u_enabled", fxaaEnabled);
-            fbVao.bind();
+            blankVertexArray.bind();
             glDrawArrays(GL_TRIANGLES, 0, 3);
 
             glEnable(GL_DEPTH_TEST);
