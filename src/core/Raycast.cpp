@@ -32,6 +32,7 @@ Raycast::Raycast(glm::vec3 from, glm::vec3 to, Context raycastContext) {
 }
 
 std::optional<glm::ivec3> Raycast::getNextTargetPos() {
+    normal = glm::vec3(0);
     if (steps == 0) {
         steps++;
         return pos;
@@ -44,11 +45,13 @@ std::optional<glm::ivec3> Raycast::getNextTargetPos() {
             if (tmaxX > 1.0) return std::nullopt;
             pos.x += stepX;
             tmaxX += deltaX;
+            normal = glm::vec3(-stepX, 0, 0);
         } else {
             // tmaxZ smallest
             if (tmaxZ > 1.0) return std::nullopt;
             pos.z += stepZ;
             tmaxZ += deltaZ;
+            normal = glm::vec3(0, 0, -stepZ);
         }
     } else {
         if (tmaxY < tmaxZ) {
@@ -56,13 +59,19 @@ std::optional<glm::ivec3> Raycast::getNextTargetPos() {
             if (tmaxY > 1.0) return std::nullopt;
             pos.y += stepY;
             tmaxY += deltaY;
+            normal = glm::vec3(0, -stepY, 0);
         } else {
             // tmaxZ smallest
             if (tmaxZ > 1.0) return std::nullopt;
             pos.z += stepZ;
             tmaxZ += deltaZ;
+            normal = glm::vec3(0, 0, -stepZ);
         }
     }
 
     return pos;
+}
+
+glm::vec3 Raycast::getNormal() {
+    return normal;
 }

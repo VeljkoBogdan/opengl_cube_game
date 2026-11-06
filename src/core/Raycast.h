@@ -12,8 +12,10 @@ public:
 
     Raycast(glm::vec3 from, glm::vec3 to, Context raycastContext = Block);
     std::optional<glm::ivec3> getNextTargetPos();
+    glm::vec3 getNormal();
 private:
     Context raycastContext;
+    glm::vec3 normal;
     glm::vec3 from, to;
     glm::ivec3 pos;
     int stepX, stepY, stepZ;

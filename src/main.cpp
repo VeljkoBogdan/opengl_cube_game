@@ -48,11 +48,12 @@ float pitch = 0.0f;
 // camera
 Camera camera;
 float speed = 32.0f;
-int renderDistance = 16;
+int renderDistance = 32;
 
 // world
 bool firstRun = true;
 bool breakRequested = false;
+bool placeRequested = false;
 float dayLengthSeconds = 60.0f * 10.0f;
 
 int main() {
@@ -218,9 +219,11 @@ int main() {
             // looking at block
             float reach = 6.0f;
             std::optional<glm::ivec3> target;
+            glm::vec3 hitNormal = glm::vec3(0);
             Raycast ray(camera.position, camera.position + camera.target * reach);
             while (auto p = ray.getNextTargetPos()) {
                 if (world.getBlock(*p) != 0) {
+                    hitNormal = ray.getNormal();
                     target = *p;
                     break;
                 }
@@ -231,6 +234,15 @@ int main() {
                 breakRequested = false;
                 if (target) {
                     world.setBlock(*target, 0);
+                }
+            }
+
+            // placing blocks
+            if (placeRequested) {
+                placeRequested = false;
+                if (target) {
+                    glm::ivec3 placeBlock = *target + (glm::ivec3)normalize(hitNormal);
+                    world.setBlock( + placeBlock, 1);
                 }
             }
 
@@ -305,8 +317,6 @@ int main() {
             fbVao.bind();
             glDrawArrays(GL_TRIANGLES, 0, 3);
 
-            //
-
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
             // frambuffer end
@@ -346,6 +356,7 @@ void processInput(GLFWwindow *window) {
 
 void mouse_button_callback(GLFWwindow *window, int button, int action, int mods) {
     if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) breakRequested = true;
+    if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) placeRequested = true;
 }
 
 // glfw: whenever the window size changed (by OS or user resize) this callback function executes
