@@ -3,6 +3,19 @@ project(opengl_test)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# turn off glfw building as a shared lib
+set(GLFW_BUILD_DOCS OFF CACHE INTERNAL "")
+set(GLFW_BUILD_TESTS OFF CACHE INTERNAL "")
+set(GLFW_BUILD_EXAMPLES OFF CACHE INTERNAL "")
+set(BUILD_SHARED_LIBS OFF CACHE INTERNAL "") # forces static rebuilding
+
+include(FetchContent)
+FetchContent_Declare(glfw
+    GIT_REPOSITORY https://github.com/glfw/glfw.git
+    GIT_TAG 3.4
+    GIT_SHALLOW TRUE)
+FetchContent_MakeAvailable(glfw)
+
 # Source files
 set(SOURCES
     src/main.cpp
@@ -50,11 +63,4 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
         RESOURCE_DIR="${CMAKE_SOURCE_DIR}/resources")
 
 # Link libraries
-target_link_libraries(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/lib/libglfw3dll.a
-)
-
-# add glfw3.dll to directory
-add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        "${CMAKE_SOURCE_DIR}/lib/glfw3.dll" $<TARGET_FILE_DIR:${PROJECT_NAME}>)
+target_link_libraries(${PROJECT_NAME} PRIVATE glfw)
