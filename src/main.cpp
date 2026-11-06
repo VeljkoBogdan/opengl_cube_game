@@ -129,7 +129,8 @@ int main() {
         );
         BlockOutline blockOutline(
             resourcePath("shaders/outline.vert").c_str(),
-            resourcePath("shaders/outline.frag").c_str()
+            resourcePath("shaders/outline.frag").c_str(),
+            2.0f
         );
 
         // time
@@ -286,7 +287,7 @@ int main() {
             chunkRenderer.drawAll(shader, camera);
 
             // outline render
-            if (target) blockOutline.draw(*target, view, proj);
+            if (target) blockOutline.draw(*target, view, proj, fbW, fbH);
 
             // skybox render
             glDepthFunc(GL_LEQUAL);
