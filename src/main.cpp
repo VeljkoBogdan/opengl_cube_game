@@ -21,6 +21,7 @@
 #include "rendering/BlockOutline.h"
 #include "rendering/chunkRenderer.h"
 #include "rendering/Crosshair.h"
+#include "rendering/ui/UIRenderer.h"
 #include "util/paths.h"
 #include "util/utils.h"
 #include "util/timer.h"
@@ -61,7 +62,7 @@ int main() {
         const GLFWvidmode* mode = glfwGetVideoMode(primaryMonitor);
         int scrWidth = mode->width;
         int scrHeight = mode->height;
-        GLFWwindow* window = glfwCreateWindow(scrWidth, scrHeight, "LearnOpenGL", nullptr, nullptr);
+        GLFWwindow* window = glfwCreateWindow(scrWidth, scrHeight, "LearnOpenGL", primaryMonitor, nullptr);
         if (window == nullptr) {
             std::cout << "Failed to create GLFW window" << std::endl;
             glfwTerminate();
@@ -154,6 +155,10 @@ int main() {
         const glm::vec3 duskZenith (0.18f, 0.25f, 0.50f),  duskHorizon (0.95f, 0.45f, 0.20f);
         const glm::vec3 dayZenith  (72.f/256.f, 195.f/256.f, 231.f/256.f);
         const glm::vec3 dayHorizon (64.f/256.f, 160.f/256.f, 200.f/256.f);
+
+        // ui once
+        UIRenderer ui;
+        ui.init(resourcePath("shaders/ui.vert"), resourcePath("shaders/ui.frag"));
 
         // Loop
         while (!glfwWindowShouldClose(window)) {
@@ -315,6 +320,15 @@ int main() {
             glEnable(GL_DEPTH_TEST);
             glEnable(GL_CULL_FACE);
             // frambuffer end
+
+            // ui
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glViewport(0, 0, fbW, fbH);
+            ui.begin(fbW, fbH);
+            glm::vec2 size{182, 22};
+            glm::vec2 pos = ui.place(Anchor::Bottom, {0, -4}, size);
+            ui.rect(pos.x, pos.y, size.x, size.y, {0, 0, 0, 0.5f});
+            ui.end();
 
             // crosshair
             framebuffer_size_callback(window, fbW, fbH);

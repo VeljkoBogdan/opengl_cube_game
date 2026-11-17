@@ -12,7 +12,7 @@ public:
     [[nodiscard]] float getSpeed() const;
 private:
     Camera camera;
-    int renderDistance = 8;
+    int renderDistance = 32;
     float speed = 32.0f;
 
     bool firstMouse = true; // used for smoothing the first mouse movement

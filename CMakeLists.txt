@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30.5)
 project(opengl_test
-    VERSION 0.0.1.0
+    VERSION 0.0.1.1
     LANGUAGES C CXX
 )
 
@@ -70,6 +70,9 @@ set(SOURCES
         src/gl/Framebuffer.h
         src/core/Player.cpp
         src/core/Player.h
+        src/rendering/ui/GUIWindow.h
+        src/rendering/ui/UIRenderer.cpp
+        src/rendering/ui/UIRenderer.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})
