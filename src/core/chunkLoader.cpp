@@ -70,28 +70,26 @@ bool ChunkLoader::gatherSolid(glm::ivec3 coord, const Chunk *self, uint16_t (&so
 
     for (int x = 0; x < CHUNK_WIDTH; x++)
         for (int y = 0; y < CHUNK_HEIGHT; y++)
-            for (int z = 0; z < CHUNK_LENGTH; z++)
-                solid[x+1][y+1][z+1] = self->blocks[x][y][z];
+            std::copy_n(self->blocks[x][y], CHUNK_LENGTH, &solid[x + 1][y + 1][1]);
 
-    Chunk* nb[3][3][3] = {};
+    auto span = [](int d, int& dst, int& len, int& src) {
+        if (d < 0)      { dst = 0;  len = 1;  src = 15; }
+        else if (d > 0) { dst = 17; len = 1;  src = 0;  }
+        else            { dst = 1;  len = 16; src = 0;  }
+    };
     for (int dx = -1; dx <= 1; dx++)
-    for (int dy = -1; dy <= 1; dy++)
-    for (int dz = -1; dz <= 1; dz++) {
-        if (!dx && !dy && !dz) continue;
-        auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
-        if (it != chunks.end()) nb[dx+1][dy+1][dz+1] = &it->second;
-    }
+        for (int dy = -1; dy <= 1; dy++)
+            for (int dz = -1; dz <= 1; dz++) {
+                if (!dx && !dy && !dz) continue;
+                auto it = chunks.find(coord + glm::ivec3(dx, dy, dz));
+                if (it == chunks.end()) continue;
+                int px, nx, sx, py, ny, sy, pz, nz, sz;
+                span(dx, px, nx, sx); span(dy, py, ny, sy); span(dz, pz, nz, sz);
+                for (int i = 0; i < nx; i++)
+                    for (int j = 0; j < ny; j++)
+                        std::copy_n(&it->second.blocks[sx + i][sy + j][sz], nz, &solid[px + i][py + j][pz]);
+            }
 
-    for (int px = 0; px < 18; px++)
-    for (int py = 0; py < 18; py++)
-    for (int pz = 0; pz < 18; pz++) {
-        int dx = px == 0 ? -1 : (px == 17 ? 1 : 0);
-        int dy = py == 0 ? -1 : (py == 17 ? 1 : 0);
-        int dz = pz == 0 ? -1 : (pz == 17 ? 1 : 0);
-        if (!dx && !dy && !dz) continue;
-        Chunk* c = nb[dx+1][dy+1][dz+1];
-        if (c) solid[px][py][pz] = c->blocks[(px + 15) % 16][(py + 15) % 16][(pz + 15) % 16];
-    }
     return true;
 }
 
@@ -172,11 +170,10 @@ void ChunkLoader::requestUnload(const std::vector<glm::ivec3>& coords) {
 void ChunkLoader::queueDirty(World &world) {
     std::lock_guard lock(dataMutex);
     for (auto& [coord, chunk] : world.getChunks()) {
-        if (!chunk.dirty || remeshPending.count(coord)) continue;
-        chunk.dirty = false;
+        if ((!chunk.dirty && !chunk.neighborDirty) || remeshPending.count(coord)) continue;
+        (chunk.dirty ? toRemesh : toRemeshLow).push(coord); // dirty is player edit
+        chunk.dirty = chunk.neighborDirty = false;
         remeshPending.insert(coord);
-        toRemesh.push(coord);
-
         wake.notify_one();
     }
 }
@@ -223,13 +220,15 @@ void ChunkLoader::processReady(World& world, ChunkRenderer& chunkRenderer) {
             pending.erase(job.coord);
         }
 
-        for (int dx = -1; dx <= 1; dx++)
-            for (int dy = -1; dy <= 1; dy++)
-                for (int dz = -1; dz <= 1; dz++) {
-                    if (!dx && !dy && !dz) continue;
-                    auto it = chunks.find(job.coord + glm::ivec3(dx, dy, dz));
-                    if (it != chunks.end() && it->second.vertexCount > 0) it->second.dirty = true;
-                }
+        if (!job.vertices.empty()) {
+            for (int dx = -1; dx <= 1; dx++)
+                for (int dy = -1; dy <= 1; dy++)
+                    for (int dz = -1; dz <= 1; dz++) {
+                        if (!dx && !dy && !dz) continue;
+                        auto it = chunks.find(job.coord + glm::ivec3(dx, dy, dz));
+                        if (it != chunks.end() && it->second.vertexCount > 0) it->second.neighborDirty = true;
+                    }
+        }
     }
 }
 
@@ -262,15 +261,36 @@ void ChunkLoader::processUnload(World& world, ChunkRenderer& chunkRenderer) {
 }
 
 void ChunkLoader::updateAround(World &world, const glm::ivec3 &playerChunk, int renderDistance) {
-    setPlayerChunk(playerChunk);
-    requestUnload(world.getChunksToUnload(playerChunk, renderDistance));
+    const int half = (renderDistance + 1) / 2;
+    const int vertHalf = (half + 1) / 2;
+    {
+        std::lock_guard lock(dataMutex);
+        this->playerChunk = playerChunk;
 
-    const int half = renderDistance / 2;
-    const int vertHalf = half / 2;
+        std::vector<ChunkLoadJob> jobs;
+        while (!toLoad.empty()) {
+            jobs.push_back(toLoad.top());
+            toLoad.pop();
+        };
+
+        for (auto& j : jobs) {
+            const glm::ivec3 d = j.coord - playerChunk;
+
+            if (d.x < -half - 1 || d.x > half || d.z < -half - 1 || d.z > half ||
+                d.y < -vertHalf - 1 || d.y > vertHalf) {
+                pending.erase(j.coord);
+                continue;
+                }
+            j.priority = (float)(d.x * d.x + d.y * d.y + d.z * d.z);
+            toLoad.push(j);
+        }
+    }
+
+    requestUnload(world.getChunksToUnload(playerChunk, renderDistance));
     for (int x = -half; x < half; x++)
         for (int y = -vertHalf; y < vertHalf; y++)
             for (int z = -half; z < half; z++) {
-                glm::ivec3 coord = playerChunk + glm::ivec3(x, y, z);
+                const glm::ivec3 coord = playerChunk + glm::ivec3(x, y, z);
                 if (!world.hasChunk(coord)) requestChunk(coord);
             }
 }
@@ -284,17 +304,21 @@ void ChunkLoader::workerLoop() {
 
         {
             std::unique_lock lock(dataMutex);
-            wake.wait(lock, [&] { return !running || !toRemesh.empty() || !toLoad.empty(); });
+            wake.wait(lock, [&] { return !running || !toRemesh.empty() || !toLoad.empty() || !toRemeshLow.empty(); });
             if (!running) return;
 
             if (!toRemesh.empty()) {
                 remeshCoord = toRemesh.front();
                 toRemesh.pop();
                 isRemesh = true;
-            } else {
+            } else if (!toLoad.empty()) {
                 job = toLoad.top();
                 toLoad.pop();
                 cancelled = pendingUnload.count(job.coord) > 0;
+            } else {
+                remeshCoord = toRemeshLow.front();
+                toRemeshLow.pop();
+                isRemesh = true;
             }
         }
 

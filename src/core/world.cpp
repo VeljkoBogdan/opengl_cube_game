@@ -39,7 +39,7 @@ void World::setBlock(glm::ivec3 worldPos, int blockId) {
     for (int dz : {0, d.z}) {
         if (!dx && !dy && !dz) continue;
         auto neighbor = chunks.find(chunkPos + glm::ivec3(dx, dy, dz));
-        if (neighbor != chunks.end()) neighbor->second.dirty = true;
+        if (neighbor != chunks.end()) neighbor->second.neighborDirty = true;
     }
 }
 

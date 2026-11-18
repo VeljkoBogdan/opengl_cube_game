@@ -86,6 +86,7 @@ private:
     World* world = nullptr;
 
     std::queue<glm::ivec3> toRemesh;
+    std::queue<glm::ivec3> toRemeshLow;
     std::unordered_set<glm::ivec3, IVec3Hash> remeshPending;
 };
 
