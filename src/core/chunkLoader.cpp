@@ -38,6 +38,8 @@ void ChunkLoader::addFace(int face, int x, int y, int z, uint32_t layer,
         int c  = occ(front + ts + bs);
         ao[i] = (s1 && s2) ? 0 : 3 - (s1 + s2 + c);
 
+        // packing
+        // x(5) y(5) z(5) | face(3) | corner(2) | layer(8) | ao(2)
         const glm::ivec3 p = glm::ivec3(x, y, z) + (f.n + ts + bs + glm::ivec3(1)) / 2;
         packed[i] = (uint32_t)p.x |
             ((uint32_t)p.y << 5) |
