@@ -31,7 +31,7 @@ struct ChunkLoadJobCompare {
 struct ChunkReadyJob {
     glm::ivec3 coord;
     Chunk chunk;
-    std::vector<float> vertices;
+    std::vector<uint32_t> vertices;
     bool remesh = false;
 };
 
@@ -59,9 +59,9 @@ public:
     void updateAround(World& world, const glm::ivec3& playerChunk, int renderDistance);
 private:
     void workerLoop();
-    void addFace(int face, int x, int y, int z, float layer, const uint16_t (&ids)[18][18][18], std::vector<float>& verticesStorage);
+    void addFace(int face, int x, int y, int z, uint32_t layer, const uint16_t (&ids)[18][18][18], std::vector<uint32_t>& verticesStorage);
     bool gatherSolid(glm::ivec3 coord, const Chunk *self, uint16_t (&solid)[18][18][18]);
-    void meshFromSolid(const uint16_t(&solid)[18][18][18], std::vector<float> &vertices);
+    void meshFromSolid(const uint16_t(&solid)[18][18][18], std::vector<uint32_t> &vertices);
     int layerFor(int blockId, int face) const { return BLOCK_LAYERS[blockId][face]; }
 
     // ONE mutex guards everything below,

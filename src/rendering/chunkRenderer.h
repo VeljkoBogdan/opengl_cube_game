@@ -19,7 +19,7 @@ public:
     void init();
 
     // copies the mesh into the shared buffer
-    void upload(Chunk& chunk, const std::vector<float>& vertices);
+    void upload(Chunk &chunk, const std::vector<uint32_t> &vertices);
     // returns the chunk's range to the arena
     void release(const Chunk& chunk);
 

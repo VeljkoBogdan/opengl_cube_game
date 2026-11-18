@@ -1,21 +1,22 @@
 #include "chunkRenderer.h"
 
 constexpr uint32_t MAX_VERTS = 16'000'000;
-constexpr int FLOATS_PER_VERTEX = 10; // pos(3) normal(3) uv(2) layer(1) ao(1)
-constexpr size_t VERTEX_BYTES = FLOATS_PER_VERTEX * sizeof(float);
+// constexpr int FLOATS_PER_VERTEX = 10; // pos(3) normal(3) uv(2) layer(1) ao(1)
+constexpr size_t VERTEX_BYTES = sizeof(uint32_t);
 constexpr int CHUNK_SIZE_BLOCKS = 16;
 
 void ChunkRenderer::init() {
     geometry.allocate((size_t)MAX_VERTS * VERTEX_BYTES);
-    vao.addBuffer(geometry, VertexLayout().floats(3).floats(3).floats(2).floats(1).floats(1));
+    // vao.addBuffer(geometry, VertexLayout().floats(3).floats(3).floats(2).floats(1).floats(1));
+    vao.addBuffer(geometry, VertexLayout().uints(1));
     vao.addBuffer(offsetBuf, VertexLayout().floats(3).perInstance());
 
     arena = VertexArena(MAX_VERTS);
 }
 
-void ChunkRenderer::upload(Chunk &chunk, const std::vector<float> &vertices) {
+void ChunkRenderer::upload(Chunk &chunk, const std::vector<uint32_t> &vertices) {
     chunk.vertexCount = 0;
-    uint32_t count = (uint32_t)(vertices.size() / FLOATS_PER_VERTEX);
+    uint32_t count = (uint32_t)(vertices.size());
     if (count == 0) return;
 
     uint32_t first;
@@ -24,7 +25,7 @@ void ChunkRenderer::upload(Chunk &chunk, const std::vector<float> &vertices) {
         return;
     }
 
-    geometry.update((size_t)first * VERTEX_BYTES, vertices.data(), vertices.size() * sizeof(float));
+    geometry.update((size_t)first * VERTEX_BYTES, vertices.data(), vertices.size() * sizeof(uint32_t));
 
     chunk.firstVertex = (int)first;
     chunk.vertexCount = (int)count;
@@ -45,7 +46,7 @@ void ChunkRenderer::drawAll(Shader &shader, Camera& camera) {
         if (chunk.vertexCount <= 0 || !camera.isChunkVisible(coords)) continue;
         cmds.push_back({ (GLuint)chunk.vertexCount, 1u, (GLuint)chunk.firstVertex,
             (GLuint)offsets.size() });
-        offsets.push_back(glm::vec3(coords * CHUNK_SIZE_BLOCKS));
+        offsets.push_back(glm::vec3(coords * CHUNK_SIZE_BLOCKS) - 0.5f);
     }
     if (cmds.empty()) return;
 
