@@ -56,7 +56,7 @@ public:
 
     void processReady(World& world, ChunkRenderer& renderer);
     void processUnload(World& world, ChunkRenderer& renderer);
-
+    void updateAround(World& world, const glm::ivec3& playerChunk, int renderDistance);
 private:
     void workerLoop();
     void addFace(int face, int x, int y, int z, float layer, const uint16_t (&ids)[18][18][18], std::vector<float>& verticesStorage);

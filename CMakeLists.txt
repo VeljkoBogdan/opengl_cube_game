@@ -73,6 +73,14 @@ set(SOURCES
         src/rendering/ui/GUIWindow.h
         src/rendering/ui/UIRenderer.cpp
         src/rendering/ui/UIRenderer.h
+        src/app/Game.cpp
+        src/app/Game.h
+        src/app/Window.h
+        src/rendering/Sky.h
+        src/rendering/Skybox.h
+        src/rendering/PostProcess.h
+        src/core/BlockInteraction.h
+        src/gl/DebugCallback.h
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

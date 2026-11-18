@@ -7,12 +7,13 @@ public:
     Player();
     void update(float delta);
     void mouseCallback(double xPos, double yPos);
+    void move(glm::vec3 input, float delta);
     Camera& getCamera();
     [[nodiscard]] int getRenderDistance() const;
     [[nodiscard]] float getSpeed() const;
 private:
     Camera camera;
-    int renderDistance = 32;
+    int renderDistance = 6;
     float speed = 32.0f;
 
     bool firstMouse = true; // used for smoothing the first mouse movement

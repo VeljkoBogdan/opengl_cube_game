@@ -264,6 +264,20 @@ void ChunkLoader::processUnload(World& world, ChunkRenderer& chunkRenderer) {
     }
 }
 
+void ChunkLoader::updateAround(World &world, const glm::ivec3 &playerChunk, int renderDistance) {
+    setPlayerChunk(playerChunk);
+    requestUnload(world.getChunksToUnload(playerChunk, renderDistance));
+
+    const int half = renderDistance / 2;
+    const int vertHalf = half / 2;
+    for (int x = -half; x < half; x++)
+        for (int y = -vertHalf; y < vertHalf; y++)
+            for (int z = -half; z < half; z++) {
+                glm::ivec3 coord = playerChunk + glm::ivec3(x, y, z);
+                if (!world.hasChunk(coord)) requestChunk(coord);
+            }
+}
+
 void ChunkLoader::workerLoop() {
     while (true) {
         ChunkLoadJob job;

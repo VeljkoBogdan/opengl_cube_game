@@ -33,6 +33,14 @@ void Player::mouseCallback(double xPos, double yPos) {
     camera.up = glm::normalize(glm::cross(camera.right, camera.target));
 }
 
+void Player::move(glm::vec3 input, float delta) {
+    if (dot(input, input) == 0.0f) return;
+    input = normalize(input);
+    Camera& cam = getCamera();
+    const glm::vec3 forward = glm::normalize(glm::vec3(cam.target.x, 0.0f, cam.target.z));
+    cam.position += getSpeed() * delta * (forward * input.z + cam.right * input.x + glm::vec3(0, 1, 0) * input.y);
+}
+
 Camera& Player::getCamera() {
     return camera;
 }
