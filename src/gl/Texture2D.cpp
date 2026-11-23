@@ -6,6 +6,7 @@
 #include <iostream>
 
 #include "../util/stb_image.h"
+#include "../util/paths.h"
 
 Texture2D & Texture2D::operator=(Texture2D &&obj) noexcept {
     if (this != &obj) {
@@ -19,7 +20,9 @@ Texture2D & Texture2D::operator=(Texture2D &&obj) noexcept {
 bool Texture2D::load(const std::string &path, bool nearest) {
     int width, height, channels;
     stbi_set_flip_vertically_on_load(true);
-    unsigned char* data = stbi_load(path.c_str(), &width, &height, &channels, 0);
+    std::string bytes = loadResource(path);   // paths are now "textures/dirt.png"
+    unsigned char* data = stbi_load_from_memory((const stbi_uc*)bytes.data(), (int)bytes.size(),
+                                      &width, &height, &channels, 4);
     if (!data) {
         std::cerr << "Failed to load texture: " << path << std::endl;
         return false;

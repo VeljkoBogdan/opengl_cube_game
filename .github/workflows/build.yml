@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -40,16 +40,14 @@ jobs:
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.os }}
-          path: |
-            build/Release/
-            resources/
+          name: cube-game-windows
+          path: build/Release/cube-game.exe
 
-      - name: Upload build artifacts (Linux/macOS)
+      - name: Upload build artifacts (Linux)
         if: runner.os != 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: build-${{ matrix.os }}
+          name: cube_game-linux
           path: |
             build/
             resources/
@@ -63,16 +61,9 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
-      - name: Zip each platform
-        run: |
-          cd artifacts
-          for d in */; do
-            zip -r "${d%/}.zip" "$d"
-          done
-
-      - name: Create release
-        uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: artifacts/*.exe
           generate_release_notes: true

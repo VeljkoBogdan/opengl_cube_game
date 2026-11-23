@@ -36,7 +36,15 @@ FetchContent_Declare(FastNoise2
     GIT_SHALLOW TRUE
 )
 FetchContent_MakeAvailable(FastNoise2)
+# get CMakeRC
+include(FetchContent)
+FetchContent_Declare(cmrc
+        GIT_REPOSITORY https://github.com/vector-of-bool/cmrc.git
+        GIT_TAG 2.0.1)
+FetchContent_MakeAvailable(cmrc)
 
+file(GLOB_RECURSE RES_FILES RELATIVE ${CMAKE_SOURCE_DIR} CONFIGURE_DEPENDS resources/*)
+cmrc_add_resource_library(game_res NAMESPACE res WHENCE resources ${RES_FILES})
 
 # Source files
 set(SOURCES
@@ -83,6 +91,7 @@ set(SOURCES
     src/gl/DebugCallback.h
 )
 
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -105,4 +114,5 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
         glfw
         FastNoise2
+        game_res
 )

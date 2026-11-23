@@ -3,7 +3,8 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-#include "../util/stb_image.h" // NOTE: no STB_IMAGE_IMPLEMENTATION here, it's already in Texture2D.cpp
+#include "../util/stb_image.h"
+#include "../util/paths.h"
 
 Texture2DArray& Texture2DArray::operator=(Texture2DArray&& obj) noexcept {
     if (this != &obj) {
@@ -33,7 +34,9 @@ bool Texture2DArray::load(const std::vector<std::string>& paths, bool nearest) {
     stbi_set_flip_vertically_on_load(true);
     for (size_t i = 0; i < paths.size(); ++i) {
         int iw, ih, channels;
-        images[i] = stbi_load(paths[i].c_str(), &iw, &ih, &channels, 4);
+        std::string bytes = loadResource(paths[i]);
+        images[i] = stbi_load_from_memory((const stbi_uc*)bytes.data(), (int)bytes.size(),
+                                          &iw, &ih, &channels, 4);
         if (!images[i]) {
             std::cerr << "Failed to load texture: " << paths[i] << std::endl;
             freeAll();
