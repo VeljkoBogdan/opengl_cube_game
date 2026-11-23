@@ -11,8 +11,8 @@
 class Skybox {
 public:
     Skybox()
-        : m_shader(resourcePath("shaders/skybox.vert").c_str(),
-                   resourcePath("shaders/skybox.frag").c_str()) {}
+        : m_shader("shaders/skybox.vert",
+                   "shaders/skybox.frag") {}
 
     void draw(const SkyState& sky, const glm::mat4& view, const glm::mat4& proj,
               const SkyParams& params = {}) {

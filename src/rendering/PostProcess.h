@@ -9,8 +9,8 @@
 class PostProcess {
 public:
     PostProcess()
-        : m_fxaa(resourcePath("shaders/fxaa.vert").c_str(),
-                 resourcePath("shaders/fxaa.frag").c_str()) {}
+        : m_fxaa("shaders/fxaa.vert",
+                 "shaders/fxaa.frag") {}
 
     bool fxaaEnabled = true;
 

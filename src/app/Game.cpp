@@ -3,9 +3,9 @@
 #include "../util/utils.h"
 
 Game::Game()
-    : chunkShader(resourcePath("shaders/chunk.vert").c_str(), resourcePath("shaders/chunk.frag").c_str()),
-      crosshair(resourcePath("shaders/crosshair.vert").c_str(), resourcePath("shaders/crosshair.frag").c_str()),
-      blockOutline(resourcePath("shaders/outline.vert").c_str(), resourcePath("shaders/outline.frag").c_str(), 2.0f)
+    : chunkShader("shaders/chunk.vert", "shaders/chunk.frag"),
+      crosshair("shaders/crosshair.vert", "shaders/crosshair.frag"),
+      blockOutline("shaders/outline.vert", "shaders/outline.frag", 2.0f)
 {
     installGLDebugCallback();
 
@@ -16,12 +16,12 @@ Game::Game()
     glfwSetCursorPosCallback(w, [](GLFWwindow* w, double x, double y) { self(w)->player.mouseCallback(x, y); });
     glfwSetFramebufferSizeCallback(w, [](GLFWwindow* w, int fw, int fh) { self(w)->onResize(fw, fh); });
 
-    blockTextures.load({ resourcePath("textures/dirt.png"),
-                         resourcePath("textures/grass_block_side.png"),
-                         resourcePath("textures/grass_block_top.png"),
-                         resourcePath("textures/stone.png") }, true);
+    blockTextures.load({ "textures/dirt.png",
+                         "textures/grass_block_side.png",
+                         "textures/grass_block_top.png",
+                         "textures/stone.png" }, true);
     chunkRenderer.init();
-    ui.init(resourcePath("shaders/ui.vert"), resourcePath("shaders/ui.frag"));
+    ui.init("shaders/ui.vert", "shaders/ui.frag");
 
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_CULL_FACE);

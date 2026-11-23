@@ -16,7 +16,7 @@ class Shader {
 public:
     unsigned int ID;
 
-    Shader(const char* vertexPath, const char* fragmentPath);
+    Shader(const char* vertexPath, const char* fragmentPath); // existing
     ~Shader() { destroy(); }
 
 
@@ -33,6 +33,8 @@ public:
     void setVec3(const std::string &name, float x, float y, float z) const;
 
     void destroy() const;
+private:
+    void compile(const std::string& vertexSrc, const std::string& fragmentSrc);
 };
 
 #endif

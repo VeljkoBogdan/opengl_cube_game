@@ -7,6 +7,8 @@ project(opengl_test
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
+set(CMAKE_POLICY_DEFAULT_CMP0091 NEW)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 # fix for AVX spills
 if (MINGW)
@@ -92,7 +94,6 @@ set(SOURCES
     src/gl/DebugCallback.h
 )
 
-set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
 add_executable(${PROJECT_NAME} ${SOURCES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
