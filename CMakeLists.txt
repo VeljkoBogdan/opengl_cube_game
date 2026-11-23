@@ -6,6 +6,7 @@ project(opengl_test
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
 
 # fix for AVX spills
 if (MINGW)
