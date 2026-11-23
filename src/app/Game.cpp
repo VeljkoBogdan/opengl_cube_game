@@ -74,7 +74,6 @@ void Game::updateChunkStreaming() {
 
 glm::vec3 Game::readMoveInput() const {
     auto axis = [&](int pos, int neg) { return float(window.key(pos)) - float(window.key(neg)); };
-    if (window.key(GLFW_KEY_ESCAPE)) const_cast<Window&>(window).close();
     return { axis(GLFW_KEY_D, GLFW_KEY_A),
              axis(GLFW_KEY_SPACE, GLFW_KEY_LEFT_SHIFT),
              axis(GLFW_KEY_W, GLFW_KEY_S) };
