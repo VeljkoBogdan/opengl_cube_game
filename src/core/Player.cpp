@@ -1,5 +1,8 @@
 #include "Player.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include "../util/utils.h"
 
 Player::Player() : camera() {
