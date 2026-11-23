@@ -50,7 +50,7 @@ set(SOURCES
     src/rendering/chunkRenderer.cpp
     src/util/OpenSimplexNoise.cpp
     src/rendering/drawCmd.h
-    src/rendering/VertexArena.h
+    src/rendering/vertexArena.h
     src/gl/GLBuffer.cpp
     src/gl/GLBuffer.h
     src/gl/VertexArray.cpp
