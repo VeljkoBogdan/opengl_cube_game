@@ -42,8 +42,8 @@ private:
     static constexpr float kDayLengthSeconds = 600.0f;
 
     Window window{1280, 720, "Voxel"};
-    Player player;
     World world;
+    Player player;
     ChunkLoader chunkLoader;
     ChunkRenderer chunkRenderer{world};
     Framebuffer sceneFbo;

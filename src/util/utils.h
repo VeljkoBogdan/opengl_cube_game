@@ -20,4 +20,9 @@ static constexpr glm::ivec3 worldToChunkPos(glm::vec3 pos) {
     );
 }
 
+template <typename T>
+static constexpr T lerp(T a, T b, T t) noexcept {
+    return a + t * (b - a);
+}
+
 #endif

@@ -70,3 +70,7 @@ void Camera::updateFrustum() {
         vp[3][3] - vp[3][2]
     );
 }
+
+void Camera::update(glm::vec3 pos) {
+    this->position = pos;
+}

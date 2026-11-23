@@ -17,6 +17,7 @@ public:
     glm::mat4 getProjectionMatrix() const;
     bool isChunkVisible(glm::ivec3 chunkPos) const;
     void updateFrustum();
+    void update(glm::vec3 pos);
 
     float zoom = 90.0f;
     float aspect = SCR_RATIO;

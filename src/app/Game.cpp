@@ -27,7 +27,7 @@ Game::Game()
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
 
-    player.getCamera().position = glm::vec3(0.0f, 80.0f, 0.0f);
+    player.position = glm::vec3(0.0f, 80.0f, 0.0f);
     const auto fb = window.framebufferSize();
     onResize(fb.x, fb.y);
     chunkLoader.start(world);
@@ -45,7 +45,7 @@ void Game::run() {
         if (target && placeRequested) placeBlock(world, *target, 1);
         breakRequested = placeRequested = false;
 
-        player.move(readMoveInput(), deltaTime);
+        player.move(world, readMoveInput(), deltaTime);
         player.update(deltaTime);
 
         const SkyState sky = computeSky(timeOfDay);
@@ -74,7 +74,7 @@ void Game::updateChunkStreaming() {
 
 glm::vec3 Game::readMoveInput() const {
     auto axis = [&](int pos, int neg) { return float(window.key(pos)) - float(window.key(neg)); };
-    if (window.key(GLFW_KEY_ESCAPE)) const_cast<Window&>(window).close(); // see note below
+    if (window.key(GLFW_KEY_ESCAPE)) const_cast<Window&>(window).close();
     return { axis(GLFW_KEY_D, GLFW_KEY_A),
              axis(GLFW_KEY_SPACE, GLFW_KEY_LEFT_SHIFT),
              axis(GLFW_KEY_W, GLFW_KEY_S) };

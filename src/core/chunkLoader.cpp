@@ -3,8 +3,8 @@
 #include "chunkLoader.h"
 #include "../util/direction.h"
 
-constexpr int chunksUploadedPerFrame = 8;
-constexpr int chunksUnloadedPerFrame = 8;
+constexpr int chunksUploadedPerFrame = 64;
+constexpr int chunksUnloadedPerFrame = 64;
 
 struct FaceDef { glm::ivec3 n, t, b; };
 
