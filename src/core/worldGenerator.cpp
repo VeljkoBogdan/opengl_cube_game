@@ -4,6 +4,7 @@
 #include <cmath>
 #include <memory>
 
+#include "TreeFeature.h"
 #include "FastNoise/FastNoise.h"
 
 namespace {
@@ -14,6 +15,8 @@ constexpr int kAir = 0;
 constexpr int kDirt = 1;
 constexpr int kGrass = 2;
 constexpr int kStone = 3;
+constexpr int kLog = 4;
+constexpr int kLeaves = 5;
 
 // Terrain
 constexpr double kBaseHeight = 64.0; // average ground level
@@ -45,6 +48,9 @@ constexpr int kBlobMaxY = kBlobMinY + 128;
 constexpr double kBlobFreq = 0.9; // horizontal size (lower = bigger blobs)
 constexpr double kBlobYSquash = 1.75; // >1 = flatter blobs
 constexpr double kBlobThreshold = 0.8; // higher = fewer blobs
+
+constexpr int kFeatureMinY = -32;
+constexpr int kFeatureMaxY = kBlobMaxY + 32;
 
 // Coordinate offsets used to decorrelate fields that share one noise source
 constexpr float kOffsetTunnelA   = 3000.0f;
@@ -157,15 +163,49 @@ int layerBlock(SolidAbove solidAbove) {
     return kStone;
 }
 
+int blockAtWithGround(Noise& n, int x, int y, int z, double ground) {
+    const float d = terrainDensity(n, x, y, z, ground);
+
+    if (d > 0.0f) {
+        if (isCave(n, x, y, z, d)) return kAir;
+        return layerBlock([&](int k) { return terrainDensity(n, x, y + k, z, ground) > 0.0f; });
+    }
+
+    if (blobAt(n, x, y, z)) {
+        return layerBlock([&](int k) { return blobAt(n, x, y + k, z); });
+    }
+
+    return kAir;
+}
+
 } // namespace
 
 WorldGenerator::WorldGenerator(int seed) {
     noise = makeNoise(seed);
+    initFeatures();
 }
 
 WorldGenerator::WorldGenerator() {
     noise = makeNoise(12345);
+    initFeatures();
 }
+
+void WorldGenerator::initFeatures() {
+    auto smallOak = std::make_shared<TreeFeature>(TreeConfig{4, 6, 2, kLog, kLeaves});
+    auto bigOak = std::make_shared<TreeFeature>(TreeConfig{9, 13, 3, kLog, kLeaves});
+
+    auto oaks = std::make_shared<WeightedFeature>();
+    oaks->add(smallOak, 4.0f);
+    oaks->add(bigOak, 1.0f);
+
+    PlacementRules rules;
+    rules.cellSize = 6;
+    rules.chance = 0.5f;
+    rules.ground = {kGrass};
+
+    features.add({oaks, rules, 1});
+}
+
 
 void WorldGenerator::generateChunk(Chunk& chunk, glm::ivec3 coords) const {
     chunk.dirty = true;
@@ -182,12 +222,15 @@ void WorldGenerator::generateChunk(Chunk& chunk, glm::ivec3 coords) const {
 
     const bool hasTerrain = baseY <= kTerrainTop;
     const bool hasBlobs = (baseY + LAYERS - 1 >= kBlobMinY) && (baseY <= kBlobMaxY);
+    const bool mayHaveFeatures = baseY + SIZE - 1 >= kFeatureMinY && baseY <= kFeatureMaxY;
+    const uint64_t featureSeed = static_cast<uint64_t>(n.seed);
 
     if (!hasTerrain && !hasBlobs) {
         for (int x = 0; x < SIZE; x++)
             for (int y = 0; y < SIZE; y++)
                 for (int z = 0; z < SIZE; z++)
                     chunk.blocks[x][y][z] = kAir;
+        if (mayHaveFeatures) features.apply(chunk, coords, *this, featureSeed);
         return;
     }
 
@@ -247,30 +290,40 @@ void WorldGenerator::generateChunk(Chunk& chunk, glm::ivec3 coords) const {
 
                 chunk.blocks[x][y][z] = block;
             }
+
+    if (mayHaveFeatures) features.apply(chunk, coords, *this, featureSeed);
 }
 
-float WorldGenerator::getDensity(int worldX, int worldY, int worldZ) {
+uint16_t WorldGenerator::blockAt(int x, int y, int z) const {
+    Noise& n = *noise;
+    return static_cast<uint16_t>(blockAtWithGround(n, x, y, z, groundLevelAt(n, x, z)));
+}
+
+std::optional<int> WorldGenerator::surfaceY(int x, int z) const {
+    Noise& n = *noise;
+    const double ground = groundLevelAt(n, x, z);
+
+    for (int y = kBlobMaxY; y >= kBlobMinY; y--) {
+        if (blobAt(n, x, y, z)) return y;
+    }
+
+    const int top = std::min(kTerrainTop, static_cast<int>(std::ceil(ground + kTerrainStrength / kTerrainSlope)) + 1);
+    for (int y = top; y >= kCaveMinY; y--) {
+        if (blockAtWithGround(n, x, y, z, ground) != kAir) return y;
+    }
+
+    return std::nullopt;
+}
+
+float WorldGenerator::getDensity(int worldX, int worldY, int worldZ) const {
     return terrainDensity(*noise, worldX, worldY, worldZ, groundLevelAt(*noise, worldX, worldZ));
 }
 
-bool WorldGenerator::isSolid(int worldX, int worldY, int worldZ) {
+bool WorldGenerator::isSolid(int worldX, int worldY, int worldZ) const {
     return getBlockType(worldX, worldY, worldZ) != kAir;
 }
 
-int WorldGenerator::getBlockType(int worldX, int worldY, int worldZ) {
+int WorldGenerator::getBlockType(int worldX, int worldY, int worldZ) const {
     Noise& n = *noise;
-
-    const double ground = groundLevelAt(n, worldX, worldZ);
-    const float d = terrainDensity(n, worldX, worldY, worldZ, ground);
-
-    if (d > 0.0f) {
-        if (isCave(n, worldX, worldY, worldZ, d)) return kAir;
-        return layerBlock([&](int k) { return terrainDensity(n, worldX, worldY + k, worldZ, ground) > 0.0f; });
-    }
-
-    if (blobAt(n, worldX, worldY, worldZ)) {
-        return layerBlock([&](int k) { return blobAt(n, worldX, worldY + k, worldZ); });
-    }
-
-    return kAir;
+    return blockAtWithGround(n, worldX, worldY, worldZ, groundLevelAt(n, worldX, worldZ));
 }

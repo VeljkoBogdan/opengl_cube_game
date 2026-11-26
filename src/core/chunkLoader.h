@@ -39,7 +39,9 @@ constexpr int BLOCK_LAYERS[][6] {
     {0,0,0,0,0,0}, // 0 air
     {0,0,0,0,0,0}, // 1 dirt
     {1,1,2,0,1,1}, // 2 grass
-    {3,3,3,3,3,3}  // 3 stone
+    {3,3,3,3,3,3}, // 3 stone
+    {4,4,5,5,4,4}, // 4 log
+    {6,6,6,6,6,6} // 5 leaves
 };
 
 class ChunkLoader {

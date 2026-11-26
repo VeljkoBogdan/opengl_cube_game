@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30.5)
 project(opengl_test
-    VERSION 0.0.4.1
+    VERSION 0.0.5.0
     LANGUAGES C CXX
 )
 
@@ -92,6 +92,10 @@ set(SOURCES
     src/rendering/PostProcess.h
     src/core/BlockInteraction.h
     src/gl/DebugCallback.h
+        src/core/Feature.h
+        src/core/TreeFeature.h
+        src/core/FeaturePass.h
+        src/core/FeaturePass.cpp
 )
 
 add_executable(${PROJECT_NAME} ${SOURCES})

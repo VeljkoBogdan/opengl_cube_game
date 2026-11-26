@@ -17,9 +17,13 @@ Game::Game()
     glfwSetFramebufferSizeCallback(w, [](GLFWwindow* w, int fw, int fh) { self(w)->onResize(fw, fh); });
 
     blockTextures.load({ "textures/dirt.png",
-                         "textures/grass_block_side.png",
-                         "textures/grass_block_top.png",
-                         "textures/stone.png" }, true);
+        "textures/grass_block_side.png",
+        "textures/grass_block_top.png",
+        "textures/stone.png",
+        "textures/oak_log.png",
+        "textures/oak_log_top.png",
+        "textures/oak_leaves.png"
+    }, true);
     chunkRenderer.init();
     ui.init("shaders/ui.vert", "shaders/ui.frag");
 
